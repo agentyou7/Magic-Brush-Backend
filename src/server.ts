@@ -14,7 +14,7 @@ import { adminRouter } from "./routes/admin";
 import { servicesRouter } from "./routes/services";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
+const hostname = dev ? "localhost" : "0.0.0.0";
 const port = env.PORT;
 
 // Initialize Next.js app
