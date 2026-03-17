@@ -104,9 +104,9 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Column: Visual Content */}
-      <div className="w-1/2 bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center p-8">
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* Left Column: Visual Content - Hidden on Mobile */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-orange-500 to-orange-600 items-center justify-center p-8">
         <div className="text-center text-white">
           <div className="mb-8">
             <div className="flex flex-col items-center mb-6">
@@ -137,7 +137,7 @@ const LoginPage = () => {
           <div className="space-y-6 text-left max-w-md mx-auto">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <span className="text-2xl">📊</span>
+                <i className="fas fa-chart-line text-2xl"></i>
               </div>
               <div>
                 <h3 className="font-semibold text-lg">Real-time Analytics</h3>
@@ -147,7 +147,7 @@ const LoginPage = () => {
             
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <span className="text-2xl">👥</span>
+                <i className="fas fa-users text-2xl"></i>
               </div>
               <div>
                 <h3 className="font-semibold text-lg">Customer Management</h3>
@@ -168,19 +168,33 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* Right Column: Login Form */}
-      <div className="w-1/2 flex items-center justify-center p-8 bg-white">
+      {/* Right Column: Login Form - Full Width on Mobile */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-8 bg-white min-h-screen lg:min-h-0">
         <div className="max-w-md w-full">
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-20 h-20 bg-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-orange-500/20">
-              <span className="text-white text-2xl font-bold">MB</span>
+          {/* Mobile Logo - Only shown on mobile */}
+          <div className="lg:hidden flex flex-col items-center mb-8">
+            <div className="flex items-center space-x-3 group relative z-[70] mb-4">
+              <img
+                src="/images/logo.png"
+                alt="Magic Brush Ltd"
+                className="transition-all duration-500 object-contain w-auto h-16"
+              />
+              <div className="flex flex-col leading-none">
+                <span className="font-black text-slate-900 tracking-tighter uppercase flex items-baseline transition-all text-xl">
+                  MAGIC <span className="text-orange-500 ml-1">BRUSH</span>{" "}
+                  <span className="text-slate-900 ml-1">LTD</span>
+                </span>
+                <span className="font-black uppercase tracking-[0.3em] text-slate-400 mt-0.5 transition-all text-xs">
+                  make your dream come true
+                </span>
+              </div>
             </div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Magic Brush Admin</h1>
-            <p className="text-slate-600">Sign in to manage your business</p>
           </div>
 
           {/* Login Card */}
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl border border-slate-100">
+          <div className="bg-white rounded-[2.5rem] p-6 lg:p-8 shadow-2xl border border-slate-100">
+            <p className="text-center text-slate-600 mb-6">Sign in to manage your business</p>
+            
             {status === 'success' ? (
               <div className="text-center py-8">
                 <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -191,11 +205,6 @@ const LoginPage = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="flex items-center space-x-2 mb-6">
-                  <span className="px-3 py-1 rounded-full bg-orange-100 text-orange-600 text-[10px] font-black uppercase tracking-widest border border-orange-200">Admin Access</span>
-                  <span className="text-slate-400 text-xs font-medium">Secure Login</span>
-                </div>
-
                 {/* Email Field */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-900 uppercase tracking-wide ml-1">Email Address</label>
