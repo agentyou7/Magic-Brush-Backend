@@ -125,6 +125,39 @@ const LoginPage = () => {
               </span>
             </div>
           </div>
+          
+          {/* Bullet Points - Web View Only */}
+          <div className="space-y-6 text-left max-w-md mx-auto">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                <i className="fas fa-chart-line text-2xl text-white"></i>
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Real-time Analytics</h3>
+                <p className="text-orange-100">Track inquiries and performance</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                <i className="fas fa-users text-2xl text-white"></i>
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Customer Management</h3>
+                <p className="text-orange-100">Manage leads and communications</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                <span className="text-2xl">⚡</span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Fast & Secure</h3>
+                <p className="text-orange-100">Enterprise-grade security</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -239,6 +272,41 @@ const LoginPage = () => {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Bullet Points - Only on Mobile */}
+      <div className="lg:hidden w-full bg-orange-500 p-8">
+        <div className="space-y-6 text-white max-w-md mx-auto">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+              <i className="fas fa-chart-line text-2xl text-white"></i>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Real-time Analytics</h3>
+              <p className="text-orange-100">Track inquiries and performance</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+              <i className="fas fa-users text-2xl text-white"></i>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Customer Management</h3>
+              <p className="text-orange-100">Manage leads and communications</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+              <span className="text-2xl">⚡</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Fast & Secure</h3>
+              <p className="text-orange-100">Enterprise-grade security</p>
+            </div>
           </div>
         </div>
       </div>
