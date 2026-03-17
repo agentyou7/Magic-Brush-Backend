@@ -108,61 +108,21 @@ const LoginPage = () => {
       {/* Left Column: Visual Content - Hidden on Mobile */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-orange-500 to-orange-600 items-center justify-center p-8">
         <div className="text-center text-white">
-          <div className="mb-8">
-            <div className="flex flex-col items-center mb-6">
-              {/* Magic Brush Logo - Exact Frontend Style */}
-              <div className="flex items-center space-x-3 group relative z-[70]">
-                <img
-                  src="/images/logo.png"
-                  alt="Magic Brush Ltd"
-                  className="transition-all duration-500 object-contain w-auto h-20"
-                />
-                <div className="flex flex-col leading-none">
-                  <span className="font-black text-white tracking-tighter uppercase flex items-baseline transition-all text-2xl">
-                    MAGIC <span className="text-orange-300 ml-1">BRUSH</span>{" "}
-                    <span className="text-white ml-1">LTD</span>
-                  </span>
-                  <span className="font-black uppercase tracking-[0.3em] text-orange-100 mt-0.5 transition-all text-xs">
-                    make your dream come true
-                  </span>
-                </div>
-              </div>
-            </div>
-            <h2 className="text-4xl font-black mb-4">Welcome Back</h2>
-            <p className="text-xl text-orange-100 max-w-md mx-auto">
-              Manage your Magic Brush business with powerful tools and insights
-            </p>
-          </div>
-          
-          <div className="space-y-6 text-left max-w-md mx-auto">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <i className="fas fa-chart-line text-2xl"></i>
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Real-time Analytics</h3>
-                <p className="text-orange-100">Track inquiries and performance</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <i className="fas fa-users text-2xl"></i>
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Customer Management</h3>
-                <p className="text-orange-100">Manage leads and communications</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <span className="text-2xl">⚡</span>
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Fast & Secure</h3>
-                <p className="text-orange-100">Enterprise-grade security</p>
-              </div>
+          {/* Magic Brush Logo - Exact Frontend Style */}
+          <div className="flex items-center space-x-3 group relative z-[70] mb-8">
+            <img
+              src="/images/logo.png"
+              alt="Magic Brush Ltd"
+              className="transition-all duration-500 object-contain w-auto h-20"
+            />
+            <div className="flex flex-col leading-none">
+              <span className="font-black text-white tracking-tighter uppercase flex items-baseline transition-all text-2xl">
+                MAGIC <span className="text-orange-300 ml-1">BRUSH</span>{" "}
+                <span className="text-white ml-1">LTD</span>
+              </span>
+              <span className="font-black uppercase tracking-[0.3em] text-orange-100 mt-0.5 transition-all text-xs">
+                make your dream come true
+              </span>
             </div>
           </div>
         </div>
@@ -171,28 +131,28 @@ const LoginPage = () => {
       {/* Right Column: Login Form - Full Width on Mobile */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-8 bg-white min-h-screen lg:min-h-0">
         <div className="max-w-md w-full">
-          {/* Mobile Logo - Only shown on mobile */}
-          <div className="lg:hidden flex flex-col items-center mb-8">
-            <div className="flex items-center space-x-3 group relative z-[70] mb-4">
-              <img
-                src="/images/logo.png"
-                alt="Magic Brush Ltd"
-                className="transition-all duration-500 object-contain w-auto h-16"
-              />
-              <div className="flex flex-col leading-none">
-                <span className="font-black text-slate-900 tracking-tighter uppercase flex items-baseline transition-all text-xl">
-                  MAGIC <span className="text-orange-500 ml-1">BRUSH</span>{" "}
-                  <span className="text-slate-900 ml-1">LTD</span>
-                </span>
-                <span className="font-black uppercase tracking-[0.3em] text-slate-400 mt-0.5 transition-all text-xs">
-                  make your dream come true
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Login Card */}
           <div className="bg-white rounded-[2.5rem] p-6 lg:p-8 shadow-2xl border border-slate-100">
+            {/* Logo Inside Card - Mobile & Desktop */}
+            <div className="flex flex-col items-center mb-6">
+              <div className="flex items-center space-x-3 group relative z-[70] mb-4">
+                <img
+                  src="/images/logo.png"
+                  alt="Magic Brush Ltd"
+                  className="transition-all duration-500 object-contain w-auto h-16"
+                />
+                <div className="flex flex-col leading-none">
+                  <span className="font-black text-slate-900 tracking-tighter uppercase flex items-baseline transition-all text-xl">
+                    MAGIC <span className="text-orange-500 ml-1">BRUSH</span>{" "}
+                    <span className="text-slate-900 ml-1">LTD</span>
+                  </span>
+                  <span className="font-black uppercase tracking-[0.3em] text-slate-400 mt-0.5 transition-all text-xs">
+                    make your dream come true
+                  </span>
+                </div>
+              </div>
+            </div>
+            
             <p className="text-center text-slate-600 mb-6">Sign in to manage your business</p>
             
             {status === 'success' ? (
