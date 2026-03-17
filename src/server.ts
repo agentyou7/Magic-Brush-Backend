@@ -1,45 +1,63 @@
 import "dotenv/config";
+import { createServer } from "http";
+import { parse } from "url";
+import next from "next";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
+import path from "path";
 import { env } from "./lib/env";
 import { authRouter } from "./routes/auth";
 import { contactRouter } from "./routes/contact";
 import { adminRouter } from "./routes/admin";
 import { servicesRouter } from "./routes/services";
 
-const app = express();
+const dev = process.env.NODE_ENV !== "production";
+const hostname = "localhost";
+const port = env.PORT;
 
-app.use(helmet());
-app.use(
-  cors({
-    origin: env.CORS_ORIGIN.split(",").map((origin) => origin.trim()),
-    credentials: true,
-  })
-);
-app.use(express.json({ limit: "1mb" }));
-app.use(cookieParser());
+// Initialize Next.js app
+const app = next({ dev, hostname, port });
+const handle = app.getRequestHandler();
 
-app.get("/api/health", (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "API is healthy",
+app.prepare().then(() => {
+  const server = express();
+
+  // Middleware
+  server.use(helmet());
+  server.use(
+    cors({
+      origin: env.CORS_ORIGIN.split(",").map((origin) => origin.trim()),
+      credentials: true,
+    })
+  );
+  server.use(express.json({ limit: "1mb" }));
+  server.use(cookieParser());
+
+  // Serve static files from public directory
+  server.use(express.static(path.join(__dirname, '../public')));
+
+  // API Routes
+  server.get("/api/health", (_req, res) => {
+    res.status(200).json({
+      success: true,
+      message: "API is healthy",
+    });
   });
-});
 
-app.use("/api/auth", authRouter);
-app.use("/api/contact", contactRouter);
-app.use("/api/services", servicesRouter);
-app.use("/api/admin", adminRouter);
+  server.use("/api/auth", authRouter);
+  server.use("/api/contact", contactRouter);
+  server.use("/api/services", servicesRouter);
+  server.use("/api/admin", adminRouter);
 
-app.use((_req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
+  // Handle all other requests with Next.js
+  server.use((req, res) => {
+    const parsedUrl = parse(req.url!, true);
+    handle(req, res, parsedUrl);
   });
-});
 
-app.listen(env.PORT, () => {
-  console.log(`MagicBrush backend listening on http://localhost:${env.PORT}`);
+  createServer(server).listen(port, () => {
+    console.log(`MagicBrush backend listening on http://${hostname}:${port}`);
+  });
 });
