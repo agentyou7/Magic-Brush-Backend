@@ -400,7 +400,6 @@ const LoginPage = () => {
                 <button
                   type="submit"
                   onClick={handleButtonClick}
-                  disabled={status === 'submitting'}
                   className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white font-black text-lg py-4 rounded-2xl transition-all shadow-xl shadow-orange-500/20 flex items-center justify-center space-x-3 transform active:scale-95"
                 >
                   <>
