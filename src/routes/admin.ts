@@ -1,8 +1,7 @@
 import { type Request, Router } from "express";
 import { type Query } from "firebase-admin/firestore";
 import { z } from "zod";
-import { firestoreDb } from "../lib/firebase";
-import { type AuthPayload, verifyAccessToken } from "../lib/auth";
+import { firestoreDb, firebaseAuth } from "../lib/firebase";
 import { createUser, updateUser, deleteUser, getAllUsers } from "../lib/user-creation";
 import { createService, updateService, deleteService, getAllServices } from "../lib/service-management";
 
@@ -61,10 +60,10 @@ function readQueryValue(
   return undefined;
 }
 
-function getAdminPayload(req: Request): {
-  authPayload?: AuthPayload;
+async function getAdminPayload(req: Request): Promise<{
+  authPayload?: { sub: string; email: string; role: string };
   error?: { status: number; body: { success: false; message: string } };
-} {
+}> {
   const token = getRequestToken(req);
   if (!token) {
     return {
@@ -75,9 +74,28 @@ function getAdminPayload(req: Request): {
     };
   }
 
-  let authPayload: AuthPayload;
   try {
-    authPayload = verifyAccessToken(token);
+    const decodedToken = await firebaseAuth.verifyIdToken(token);
+    const userRecord = await firebaseAuth.getUser(decodedToken.uid);
+    const authPayload = {
+      sub: decodedToken.uid,
+      email: userRecord.email ?? decodedToken.email ?? "",
+      role:
+        typeof decodedToken.role === "string"
+          ? decodedToken.role
+          : "admin",
+    };
+
+    if (authPayload.role !== "admin") {
+      return {
+        error: {
+          status: 403,
+          body: { success: false, message: "Forbidden" },
+        },
+      };
+    }
+
+    return { authPayload };
   } catch {
     return {
       error: {
@@ -86,22 +104,11 @@ function getAdminPayload(req: Request): {
       },
     };
   }
-
-  if (authPayload.role !== "admin") {
-    return {
-      error: {
-        status: 403,
-        body: { success: false, message: "Forbidden" },
-      },
-    };
-  }
-
-  return { authPayload };
 }
 
 adminRouter.get("/inquiries", async (req, res) => {
   try {
-    const authCheck = getAdminPayload(req);
+    const authCheck = await getAdminPayload(req);
     if (authCheck.error) {
       return res.status(authCheck.error.status).json(authCheck.error.body);
     }
@@ -182,7 +189,7 @@ adminRouter.get("/inquiries", async (req, res) => {
 
 adminRouter.patch("/inquiries/:id/status", async (req, res) => {
   try {
-    const authCheck = getAdminPayload(req);
+    const authCheck = await getAdminPayload(req);
     if (authCheck.error || !authCheck.authPayload) {
       const fallback = authCheck.error ?? {
         status: 401,
@@ -282,7 +289,7 @@ const createUserSchema = z.object({
 
 adminRouter.post("/users", async (req, res) => {
   try {
-    const authCheck = getAdminPayload(req);
+    const authCheck = await getAdminPayload(req);
     if (authCheck.error) {
       return res.status(authCheck.error.status).json(authCheck.error.body);
     }
@@ -313,7 +320,7 @@ adminRouter.post("/users", async (req, res) => {
 
 adminRouter.get("/users", async (req, res) => {
   try {
-    const authCheck = getAdminPayload(req);
+    const authCheck = await getAdminPayload(req);
     if (authCheck.error) {
       return res.status(authCheck.error.status).json(authCheck.error.body);
     }
@@ -342,7 +349,7 @@ const updateUserSchema = z.object({
 
 adminRouter.patch("/users/:id", async (req, res) => {
   try {
-    const authCheck = getAdminPayload(req);
+    const authCheck = await getAdminPayload(req);
     if (authCheck.error) {
       return res.status(authCheck.error.status).json(authCheck.error.body);
     }
@@ -374,7 +381,7 @@ adminRouter.patch("/users/:id", async (req, res) => {
 
 adminRouter.delete("/users/:id", async (req, res) => {
   try {
-    const authCheck = getAdminPayload(req);
+    const authCheck = await getAdminPayload(req);
     if (authCheck.error) {
       return res.status(authCheck.error.status).json(authCheck.error.body);
     }
@@ -409,7 +416,7 @@ const createServiceSchema = z.object({
 
 adminRouter.post("/services", async (req, res) => {
   try {
-    const authCheck = getAdminPayload(req);
+    const authCheck = await getAdminPayload(req);
     if (authCheck.error) {
       return res.status(authCheck.error.status).json(authCheck.error.body);
     }
@@ -440,7 +447,7 @@ adminRouter.post("/services", async (req, res) => {
 
 adminRouter.get("/services/all", async (req, res) => {
   try {
-    const authCheck = getAdminPayload(req);
+    const authCheck = await getAdminPayload(req);
     if (authCheck.error) {
       return res.status(authCheck.error.status).json(authCheck.error.body);
     }
@@ -473,7 +480,7 @@ const updateServiceSchema = z.object({
 
 adminRouter.patch("/services/:id", async (req, res) => {
   try {
-    const authCheck = getAdminPayload(req);
+    const authCheck = await getAdminPayload(req);
     if (authCheck.error) {
       return res.status(authCheck.error.status).json(authCheck.error.body);
     }
@@ -505,7 +512,7 @@ adminRouter.patch("/services/:id", async (req, res) => {
 
 adminRouter.delete("/services/:id", async (req, res) => {
   try {
-    const authCheck = getAdminPayload(req);
+    const authCheck = await getAdminPayload(req);
     if (authCheck.error) {
       return res.status(authCheck.error.status).json(authCheck.error.body);
     }

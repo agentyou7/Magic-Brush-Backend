@@ -3,27 +3,26 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
   
   // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/api/auth/login', '/api/contact'];
-  
-  // Check if the path is public
-  const isPublicRoute = publicRoutes.some(route => 
+  const publicRoutes = ['/login'];
+    const isPublicRoute = publicRoutes.some(route => 
     pathname === route || pathname.startsWith(route)
   );
   
-  // If it's not a public route, check for authentication
   if (!isPublicRoute) {
     const token = request.cookies.get('access_token')?.value;
     
-    // If no token, redirect to login
     if (!token) {
       const loginUrl = new URL('/login', request.url);
       return NextResponse.redirect(loginUrl);
     }
   }
   
-  // If user is already logged in and tries to access login page, redirect to dashboard
   if (pathname === '/login') {
     const token = request.cookies.get('access_token')?.value;
     if (token) {

@@ -86,27 +86,25 @@ export async function getAllServices(includeInactive = false): Promise<Array<{
   createdAt: string;
   updatedAt: string;
 }>> {
-  let query = firestoreDb.collection("services").orderBy("sortOrder", "asc");
-  
-  if (!includeInactive) {
-    query = query.where("isActive", "==", true);
-  }
-  
-  const snapshot = await query.get();
-  
-  return snapshot.docs.map(doc => {
+  const snapshot = await firestoreDb.collection("services").get();
+
+  const services = snapshot.docs.map((doc) => {
     const data = doc.data();
     return {
       id: data.id || doc.id,
       title: data.title,
       description: data.description,
-      iconName: data.iconName,
-      fullDetails: data.fullDetails,
-      imageUrl: data.imageUrl,
+      iconName: data.iconName || "fa-tools",
+      fullDetails: data.fullDetails || "",
+      imageUrl: data.imageUrl || "",
       isActive: data.isActive ?? true,
       sortOrder: data.sortOrder ?? 0,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
     };
   });
+
+  return services
+    .filter((service) => includeInactive || service.isActive)
+    .sort((firstService, secondService) => firstService.sortOrder - secondService.sortOrder);
 }

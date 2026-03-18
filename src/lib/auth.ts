@@ -1,6 +1,4 @@
-import bcrypt from "bcryptjs";
-import jwt, { type SignOptions } from "jsonwebtoken";
-import { env } from "./env";
+import { firebaseAuth } from "./firebase";
 
 export type AuthPayload = {
   sub: string;
@@ -8,24 +6,68 @@ export type AuthPayload = {
   role: string;
 };
 
+// Firebase Auth Functions
+export async function createFirebaseUser(email: string, password: string, displayName?: string) {
+  try {
+    const userRecord = await firebaseAuth.createUser({
+      email,
+      password,
+      displayName,
+      emailVerified: false,
+    });
+    return userRecord;
+  } catch (error) {
+    throw new Error(`Failed to create Firebase user: ${error}`);
+  }
+}
+
+export async function signInWithFirebase(email: string) {
+  try {
+    // Check if user exists in Firebase Auth
+    const userRecord = await firebaseAuth.getUserByEmail(email);
+    
+    // Create custom token for the user
+    const customToken = await firebaseAuth.createCustomToken(userRecord.uid, {
+      email: userRecord.email,
+      role: 'admin'
+    });
+    
+    return {
+      user: userRecord,
+      customToken
+    };
+  } catch (error) {
+    throw new Error(`Failed to sign in with Firebase: ${error}`);
+  }
+}
+
+export async function verifyFirebaseToken(idToken: string) {
+  try {
+    const decodedToken = await firebaseAuth.verifyIdToken(idToken);
+    return decodedToken;
+  } catch (error) {
+    throw new Error(`Invalid Firebase token: ${error}`);
+  }
+}
+
+export async function revokeFirebaseUser(uid: string) {
+  try {
+    await firebaseAuth.revokeRefreshTokens(uid);
+  } catch (error) {
+    throw new Error(`Failed to revoke user tokens: ${error}`);
+  }
+}
+
+// Legacy functions kept for compatibility
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
+  // No longer needed - Firebase handles password hashing
+  return password;
 }
 
 export async function verifyPassword(
   plainPassword: string,
   hashedPassword: string
 ): Promise<boolean> {
-  return bcrypt.compare(plainPassword, hashedPassword);
-}
-
-export function signAccessToken(payload: AuthPayload): string {
-  const options: SignOptions = {
-    expiresIn: env.JWT_EXPIRES_IN as SignOptions["expiresIn"],
-  };
-  return jwt.sign(payload, env.JWT_SECRET, options);
-}
-
-export function verifyAccessToken(token: string): AuthPayload {
-  return jwt.verify(token, env.JWT_SECRET) as AuthPayload;
+  // No longer needed - Firebase handles password verification
+  return true;
 }

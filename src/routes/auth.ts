@@ -1,12 +1,39 @@
-import { type Request, Router } from "express";
+import { type Request, type Response, Router } from "express";
 import rateLimit from "express-rate-limit";
+import jwt from "jsonwebtoken";
 import { z } from "zod";
-import { getUserByEmail } from "../lib/db";
-import { signAccessToken, verifyAccessToken, verifyPassword } from "../lib/auth";
+import { firebaseAuth, firestoreDb } from "../lib/firebase";
+import { verifyFirebaseToken, revokeFirebaseUser } from "../lib/auth";
+import { buildOtpAuthUrl, generateTotpSecret, verifyTotpCode } from "../lib/totp";
+import { env } from "../lib/env";
 
 const loginBodySchema = z.object({
   email: z.string().trim().toLowerCase().email("Valid email is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+const updatePasswordBodySchema = z
+  .object({
+    currentPassword: z.string().min(6, "Current password is required"),
+    newPassword: z.string().min(6, "New password must be at least 6 characters"),
+    confirmPassword: z.string().min(6, "Confirm password is required"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "New password and confirm password must match",
+    path: ["confirmPassword"],
+  });
+
+const verifyTwoFactorSetupSchema = z.object({
+  code: z.string().trim().min(6, "Authenticator code is required"),
+});
+
+const toggleTwoFactorSchema = z.object({
+  enabled: z.boolean(),
+});
+
+const verifyLoginTwoFactorSchema = z.object({
+  challengeToken: z.string().min(1, "Challenge token is required"),
+  code: z.string().trim().min(6, "Authenticator code is required"),
 });
 
 const loginLimiter = rateLimit({
@@ -31,6 +58,123 @@ function getRequestToken(req: Request): string | null {
     : null;
 }
 
+async function fetchJsonWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = 15000
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+    const data = await response.json();
+    return { response, data };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function resolveAuthenticatedUser(req: Request): Promise<{
+  id: string;
+  email: string;
+}> {
+  const token = getRequestToken(req);
+
+  if (token) {
+    try {
+      const decodedToken = await verifyFirebaseToken(token);
+      const userRecord = await firebaseAuth.getUser(decodedToken.uid);
+
+      if (userRecord.email) {
+        return {
+          id: userRecord.uid,
+          email: userRecord.email,
+        };
+      }
+    } catch {
+      // Fall back to user_data cookie below.
+    }
+  }
+
+  const userData = req.cookies?.user_data;
+  if (typeof userData === "string") {
+    const parsedUser = JSON.parse(userData);
+    if (parsedUser?.id && parsedUser?.email) {
+      return {
+        id: String(parsedUser.id),
+        email: String(parsedUser.email),
+      };
+    }
+  }
+
+  throw new Error("Authentication required");
+}
+
+function issueTwoFactorChallenge(payload: {
+  uid: string;
+  email: string;
+  role: string;
+  idToken: string;
+}): string {
+  return jwt.sign(payload, env.JWT_SECRET, {
+    expiresIn: "10m",
+  });
+}
+
+function verifyTwoFactorChallenge(token: string): {
+  uid: string;
+  email: string;
+  role: string;
+  idToken: string;
+} {
+  return jwt.verify(token, env.JWT_SECRET) as {
+    uid: string;
+    email: string;
+    role: string;
+    idToken: string;
+  };
+}
+
+function buildUserPayload(userRecord: Awaited<ReturnType<typeof firebaseAuth.getUser>>) {
+  return {
+    id: userRecord.uid,
+    email: userRecord.email ?? null,
+    role: "admin",
+    isActive: true,
+    createdAt: userRecord.metadata.creationTime,
+  };
+}
+
+function applyLoginCookies(
+  res: Response,
+  idToken: string,
+  user: {
+    id: string;
+    email: string | null;
+    role: string;
+    isActive: boolean;
+    createdAt: string | undefined;
+  }
+) {
+  res.cookie("access_token", idToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 24 * 60 * 60 * 1000,
+  });
+
+  res.cookie("user_data", JSON.stringify(user), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 24 * 60 * 60 * 1000,
+  });
+}
+
 authRouter.post("/login", loginLimiter, async (req, res) => {
   const parsedBody = loginBodySchema.safeParse(req.body);
 
@@ -45,98 +189,523 @@ authRouter.post("/login", loginLimiter, async (req, res) => {
   const { email, password } = parsedBody.data;
 
   try {
-    const user = await getUserByEmail(email);
+    console.log('🔐 Login attempt for:', email);
+    
+    // Use Firebase Auth REST API to verify email and password
+    const firebaseApiKey = process.env.FIREBASE_API_KEY;
+    console.log('🔑 Firebase API Key exists:', !!firebaseApiKey);
+    
+    if (!firebaseApiKey) {
+      throw new Error('Firebase API key not configured');
+    }
 
-    if (!user || !user.isActive) {
+    // Sign in with Firebase Auth REST API
+    const authUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`;
+    console.log('🌐 Calling Firebase Auth URL:', authUrl);
+    
+    const firebaseResponse = await fetch(authUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        returnSecureToken: true,
+      }),
+    });
+
+    const firebaseData = await firebaseResponse.json();
+    console.log('📥 Firebase Response Status:', firebaseResponse.status);
+    console.log('📥 Firebase Response Data:', firebaseData);
+
+    if (!firebaseResponse.ok) {
+      console.error('❌ Firebase Auth Error:', firebaseData);
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: firebaseData.error?.message || 'Invalid email or password',
       });
     }
 
-    const isPasswordValid = await verifyPassword(password, user.passwordHash);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password",
+    console.log('✅ Firebase Auth Success, getting user record...');
+    
+    // Get user record from Firebase Admin SDK
+    const userRecord = await firebaseAuth.getUser(firebaseData.localId);
+    console.log('👤 User Record:', userRecord.email);
+    
+    // Create custom token for optional client-side Firebase auth flows
+    const customToken = await firebaseAuth.createCustomToken(userRecord.uid, {
+      email: userRecord.email,
+      role: 'admin'
+    });
+    console.log('🎟️ Custom Token created');
+    
+    const user = buildUserPayload(userRecord);
+    const securityDoc = await firestoreDb.collection("user_security").doc(userRecord.uid).get();
+    const securityData = securityDoc.data();
+
+    if (securityData?.totpSecret && securityData?.twoFactorEnabled) {
+      const challengeToken = issueTwoFactorChallenge({
+        uid: userRecord.uid,
+        email: userRecord.email ?? "",
+        role: "admin",
+        idToken: firebaseData.idToken,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "2FA verification required",
+        data: {
+          requiresTwoFactor: true,
+          challengeToken,
+          email: user.email,
+        },
       });
     }
 
-    const token = signAccessToken({
-      sub: user.id,
-      email: user.email,
-      role: user.role ?? "user",
-    });
+    // Store the Firebase ID token in an httpOnly cookie for authenticated API requests
+    applyLoginCookies(res, firebaseData.idToken, user);
 
-    res.cookie("access_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000,
-      path: "/",
+    // Return user info from Firebase Auth
+    const responseData = {
+      success: true,
+      message: "Login successful",
+      data: {
+        user,
+        customToken: customToken, // For client-side Firebase auth
+        idToken: firebaseData.idToken, // Firebase ID token for client-side use
+      },
+    };
+    
+    console.log('🎉 Login successful, sending response');
+    return res.status(200).json(responseData);
+    
+  } catch (error) {
+    console.error("💥 Login error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Login failed. Please try again.",
     });
+  }
+});
+
+authRouter.post("/verify-2fa-login", async (req, res) => {
+  const parsedBody = verifyLoginTwoFactorSchema.safeParse(req.body);
+
+  if (!parsedBody.success) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid request payload",
+      errors: parsedBody.error.flatten().fieldErrors,
+    });
+  }
+
+  try {
+    const challenge = verifyTwoFactorChallenge(parsedBody.data.challengeToken);
+    const securityDoc = await firestoreDb.collection("user_security").doc(challenge.uid).get();
+    const securityData = securityDoc.data();
+
+    if (!securityData?.totpSecret || !securityData?.twoFactorEnabled) {
+      return res.status(400).json({
+        success: false,
+        message: "2FA is not enabled for this account",
+      });
+    }
+
+    const isValid = verifyTotpCode(securityData.totpSecret, parsedBody.data.code);
+
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid authenticator code",
+      });
+    }
+
+    const userRecord = await firebaseAuth.getUser(challenge.uid);
+    const user = buildUserPayload(userRecord);
+
+    applyLoginCookies(res, challenge.idToken, user);
 
     return res.status(200).json({
       success: true,
       message: "Login successful",
       data: {
-        token,
-        tokenType: "Bearer",
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role ?? "user",
-        },
+        user,
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
-    return res.status(500).json({
+    return res.status(401).json({
       success: false,
-      message: "Internal server error",
+      message: error instanceof Error ? error.message : "2FA verification failed",
     });
   }
 });
 
-authRouter.get("/me", (req, res) => {
+authRouter.post("/logout", async (req, res) => {
   try {
     const token = getRequestToken(req);
+    
+    if (token) {
+      try {
+        // Verify the token to get user UID
+        const decodedToken = await verifyFirebaseToken(token);
+        
+        // Revoke Firebase user tokens
+        await revokeFirebaseUser(decodedToken.uid);
+      } catch (error) {
+        console.error("Error revoking Firebase tokens:", error);
+      }
+    }
+
+    // Clear the cookie
+    res.clearCookie("access_token");
+    res.clearCookie("user_data");
+
+    return res.status(200).json({
+      success: true,
+      message: "Logout successful",
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Logout failed. Please try again.",
+    });
+  }
+});
+
+authRouter.get("/me", async (req, res) => {
+  try {
+    const token = getRequestToken(req);
+
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized",
+        message: "No authentication token provided",
       });
     }
 
-    const payload = verifyAccessToken(token);
-    return res.status(200).json({
-      success: true,
-      data: {
-        user: {
-          id: payload.sub,
-          email: payload.email,
-          role: payload.role,
+    try {
+      const decodedToken = await verifyFirebaseToken(token);
+      
+      // Get user details from Firebase Auth
+      const userRecord = await firebaseAuth.getUser(decodedToken.uid);
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          user: {
+            id: userRecord.uid,
+            email: userRecord.email,
+            role: decodedToken.role || 'admin',
+            isActive: true,
+            createdAt: userRecord.metadata.creationTime,
+          },
         },
-      },
-    });
-  } catch {
+      });
+    } catch (tokenError) {
+      const userData = req.cookies?.user_data;
+      if (userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          return res.status(200).json({
+            success: true,
+            data: {
+              user: parsedUser,
+            },
+          });
+        } catch {
+          throw new Error("Invalid user data");
+        }
+      }
+      throw tokenError;
+    }
+  } catch (error) {
+    console.error("Auth verification error:", error);
     return res.status(401).json({
       success: false,
-      message: "Invalid token",
+      message: "Invalid authentication token",
     });
   }
 });
 
-authRouter.post("/logout", (_req, res) => {
-  res.clearCookie("access_token", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-  });
+authRouter.post("/update-password", async (req, res) => {
+  const parsedBody = updatePasswordBodySchema.safeParse(req.body);
 
-  return res.status(200).json({
-    success: true,
-    message: "Logout successful",
-  });
+  if (!parsedBody.success) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid request payload",
+      errors: parsedBody.error.flatten().fieldErrors,
+    });
+  }
+
+  try {
+    const userData = req.cookies?.user_data;
+    const parsedUser = typeof userData === "string" ? JSON.parse(userData) : null;
+    const email =
+      parsedUser && typeof parsedUser.email === "string" ? parsedUser.email : null;
+    const firebaseApiKey = process.env.FIREBASE_API_KEY;
+
+    if (!email || !firebaseApiKey) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const { currentPassword, newPassword } = parsedBody.data;
+
+    const { response: verifyResponse, data: verifyData } = await fetchJsonWithTimeout(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password: currentPassword,
+          returnSecureToken: true,
+        }),
+      }
+    );
+
+    if (!verifyResponse.ok) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    const { response: updateResponse, data: updateData } = await fetchJsonWithTimeout(
+      `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${firebaseApiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          idToken: verifyData.idToken,
+          password: newPassword,
+          returnSecureToken: true,
+        }),
+      }
+    );
+
+    if (!updateResponse.ok || !updateData.idToken) {
+      return res.status(400).json({
+        success: false,
+        message: updateData?.error?.message || "Failed to update password",
+      });
+    }
+
+    res.cookie("access_token", updateData.idToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+      data: {
+        email,
+        verifiedAt: verifyData.registered ? new Date().toISOString() : null,
+      },
+    });
+  } catch (error) {
+    console.error("Update password error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to update password",
+    });
+  }
 });
+
+authRouter.get("/2fa/status", async (req, res) => {
+  try {
+    const user = await resolveAuthenticatedUser(req);
+    const securityDoc = await firestoreDb.collection("user_security").doc(user.id).get();
+    const data = securityDoc.data();
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        isSetup: Boolean(data?.totpSecret),
+        enabled: Boolean(data?.twoFactorEnabled),
+        email: user.email,
+      },
+    });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Authentication required",
+    });
+  }
+});
+
+authRouter.post("/2fa/setup", async (req, res) => {
+  try {
+    const user = await resolveAuthenticatedUser(req);
+    const secret = generateTotpSecret();
+    const otpauthUrl = buildOtpAuthUrl({
+      issuer: "Magic Brush Ltd",
+      accountName: user.email,
+      secret,
+    });
+
+    await firestoreDb.collection("user_security").doc(user.id).set(
+      {
+        uid: user.id,
+        email: user.email,
+        emailLower: user.email.toLowerCase(),
+        totpSecret: secret,
+        twoFactorEnabled: false,
+        twoFactorPending: true,
+        updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        secret,
+        otpauthUrl,
+        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(otpauthUrl)}`,
+      },
+    });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Authentication required",
+    });
+  }
+});
+
+authRouter.post("/2fa/verify-setup", async (req, res) => {
+  const parsedBody = verifyTwoFactorSetupSchema.safeParse(req.body);
+
+  if (!parsedBody.success) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid request payload",
+      errors: parsedBody.error.flatten().fieldErrors,
+    });
+  }
+
+  try {
+    const user = await resolveAuthenticatedUser(req);
+    const securityRef = firestoreDb.collection("user_security").doc(user.id);
+    const securityDoc = await securityRef.get();
+    const data = securityDoc.data();
+
+    if (!data?.totpSecret) {
+      return res.status(404).json({
+        success: false,
+        message: "2FA setup not started",
+      });
+    }
+
+    const isValid = verifyTotpCode(data.totpSecret, parsedBody.data.code);
+
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid authenticator code",
+      });
+    }
+
+    await securityRef.set(
+      {
+        twoFactorEnabled: true,
+        twoFactorPending: false,
+        confirmedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "2FA enabled successfully",
+    });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Authentication required",
+    });
+  }
+});
+
+authRouter.post("/2fa/toggle", async (req, res) => {
+  const parsedBody = toggleTwoFactorSchema.safeParse(req.body);
+
+  if (!parsedBody.success) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid request payload",
+      errors: parsedBody.error.flatten().fieldErrors,
+    });
+  }
+
+  try {
+    const user = await resolveAuthenticatedUser(req);
+    const securityRef = firestoreDb.collection("user_security").doc(user.id);
+    const securityDoc = await securityRef.get();
+    const data = securityDoc.data();
+
+    if (!data?.totpSecret) {
+      return res.status(404).json({
+        success: false,
+        message: "2FA setup not found",
+      });
+    }
+
+    await securityRef.set(
+      {
+        twoFactorEnabled: parsedBody.data.enabled,
+        twoFactorPending: false,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: parsedBody.data.enabled ? "2FA turned on" : "2FA turned off",
+    });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Authentication required",
+    });
+  }
+});
+
+export async function authenticate(req: Request) {
+  const token = getRequestToken(req);
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const decodedToken = await verifyFirebaseToken(token);
+    const userRecord = await firebaseAuth.getUser(decodedToken.uid);
+
+    return {
+      id: userRecord.uid,
+      email: userRecord.email,
+      role: decodedToken.role || 'admin',
+      isActive: true,
+      createdAt: userRecord.metadata.creationTime,
+    };
+  } catch (error) {
+    console.error("Authentication error:", error);
+    return null;
+  }
+}

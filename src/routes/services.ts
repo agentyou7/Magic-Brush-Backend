@@ -6,9 +6,9 @@ const serviceDocSchema = z.object({
   id: z.string().trim().min(1),
   title: z.string().trim().min(1),
   description: z.string().trim().min(1),
-  iconName: z.string().trim().min(1),
-  fullDetails: z.string().trim().min(1),
-  imageUrl: z.string().trim().min(1),
+  iconName: z.string().trim().min(1).optional().default("fa-tools"),
+  fullDetails: z.string().trim().optional().default(""),
+  imageUrl: z.string().trim().optional().default(""),
   isActive: z.boolean().optional().default(true),
   sortOrder: z.number().int().optional().default(0),
 });
@@ -17,11 +17,7 @@ export const servicesRouter = Router();
 
 servicesRouter.get("/", async (_req, res) => {
   try {
-    const snapshot = await firestoreDb
-      .collection("services")
-      .where("isActive", "==", true)
-      .orderBy("sortOrder", "asc")
-      .get();
+    const snapshot = await firestoreDb.collection("services").get();
 
     const services = snapshot.docs
       .map((doc) => {
@@ -45,16 +41,21 @@ servicesRouter.get("/", async (_req, res) => {
           iconName: service.iconName,
           fullDetails: service.fullDetails,
           imageUrl: service.imageUrl,
+          isActive: service.isActive,
           sortOrder: service.sortOrder,
         };
       })
       .filter((service): service is NonNullable<typeof service> => Boolean(service));
 
+    const activeServices = services
+      .filter((service) => service.isActive)
+      .sort((firstService, secondService) => firstService.sortOrder - secondService.sortOrder);
+
     return res.status(200).json({
       success: true,
       data: {
-        services,
-        count: services.length,
+        services: activeServices,
+        count: activeServices.length,
       },
     });
   } catch (error) {

@@ -23,10 +23,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
       <div className="text-center">
-        <div className="w-16 h-16 bg-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-orange-500/20">
-          <span className="text-white text-2xl font-bold">MB</span>
-        </div>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
+        <img
+          src="/images/logo.png"
+          alt="Magic Brush Ltd"
+          className="mx-auto h-20 w-auto animate-pulse object-contain"
+        />
         <p className="text-slate-600 mt-4">Loading...</p>
       </div>
     </div>
