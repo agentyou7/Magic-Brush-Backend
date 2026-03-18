@@ -67,6 +67,13 @@ const LoginPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Prevent multiple submissions
+    if (status === 'submitting') {
+      return;
+    }
+    
     setStatus('submitting');
     setErrorMessage('');
     setFieldErrors({});
@@ -80,6 +87,7 @@ const LoginPage = () => {
     }
 
     try {
+      console.log('🚀 Submitting login form...');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -88,40 +96,52 @@ const LoginPage = () => {
         body: JSON.stringify(formData),
       });
 
-      const result = await readJsonSafely(response);
+      console.log('📡 Response status:', response.status);
+      const result = await response.json();
+      console.log('📥 Response data:', result);
 
-      if (!result.success) {
+      if (result.success) {
+        console.log('✅ Login successful!');
+        setStatus('success');
+        
+        // Store user data in localStorage
+        if (result.data?.user) {
+          localStorage.setItem('user', JSON.stringify(result.data.user));
+          console.log('💾 User data saved to localStorage');
+        }
+
+        // If Firebase custom token is provided, you can use it for client-side Firebase auth
+        if (result.data?.customToken) {
+          console.log('🔥 Firebase custom token received for client-side auth');
+        }
+
+        // Redirect to dashboard after a short delay
+        setTimeout(() => {
+          console.log('🔄 Redirecting to dashboard...');
+          window.location.href = '/admin/dashboard';
+        }, 1200);
+      } else {
+        console.error('❌ Login failed:', result.message);
         setStatus('error');
         if (result.errors) {
           setFieldErrors(result.errors);
         } else {
           setErrorMessage(result.message || 'Login failed. Please try again.');
         }
-        return;
       }
-
-      if (result.data?.requiresTwoFactor && result.data?.challengeToken) {
-        setChallengeToken(result.data.challengeToken);
-        setTwoFactorCode('');
-        setLoginStep('twoFactor');
-        setStatus('idle');
-        setErrorMessage('');
-        return;
-      }
-
-      setStatus('success');
-
-      if (result.data?.user) {
-        localStorage.setItem('user', JSON.stringify(result.data.user));
-      }
-
-      setTimeout(() => {
-        window.location.href = '/admin/dashboard';
-      }, 1200);
     } catch (error) {
+      console.error('💥 Network error:', error);
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Login failed. Please try again.');
     }
+  };
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const formEvent = new Event('submit', { cancelable: true }) as any;
+    formEvent.preventDefault = () => {};
+    handleSubmit(formEvent);
   };
 
   const handleTwoFactorSubmit = async (e: React.FormEvent) => {
@@ -379,6 +399,8 @@ const LoginPage = () => {
 
                 <button
                   type="submit"
+                  onClick={handleButtonClick}
+                  disabled={status === 'submitting'}
                   className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white font-black text-lg py-4 rounded-2xl transition-all shadow-xl shadow-orange-500/20 flex items-center justify-center space-x-3 transform active:scale-95"
                 >
                   <>
