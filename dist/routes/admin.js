@@ -4,7 +4,8 @@ exports.adminRouter = void 0;
 const express_1 = require("express");
 const zod_1 = require("zod");
 const firebase_1 = require("../lib/firebase");
-const auth_1 = require("../lib/auth");
+const user_creation_1 = require("../lib/user-creation");
+const service_management_1 = require("../lib/service-management");
 const adminRouter = (0, express_1.Router)();
 exports.adminRouter = adminRouter;
 const inquiryStatusSchema = zod_1.z.enum(["new", "called", "quoted", "won", "closed"]);
@@ -47,7 +48,7 @@ function readQueryValue(queryValue) {
     }
     return undefined;
 }
-function getAdminPayload(req) {
+async function getAdminPayload(req) {
     const token = getRequestToken(req);
     if (!token) {
         return {
@@ -57,9 +58,25 @@ function getAdminPayload(req) {
             },
         };
     }
-    let authPayload;
     try {
-        authPayload = (0, auth_1.verifyAccessToken)(token);
+        const decodedToken = await firebase_1.firebaseAuth.verifyIdToken(token);
+        const userRecord = await firebase_1.firebaseAuth.getUser(decodedToken.uid);
+        const authPayload = {
+            sub: decodedToken.uid,
+            email: userRecord.email ?? decodedToken.email ?? "",
+            role: typeof decodedToken.role === "string"
+                ? decodedToken.role
+                : "admin",
+        };
+        if (authPayload.role !== "admin") {
+            return {
+                error: {
+                    status: 403,
+                    body: { success: false, message: "Forbidden" },
+                },
+            };
+        }
+        return { authPayload };
     }
     catch {
         return {
@@ -69,19 +86,10 @@ function getAdminPayload(req) {
             },
         };
     }
-    if (authPayload.role !== "admin") {
-        return {
-            error: {
-                status: 403,
-                body: { success: false, message: "Forbidden" },
-            },
-        };
-    }
-    return { authPayload };
 }
 adminRouter.get("/inquiries", async (req, res) => {
     try {
-        const authCheck = getAdminPayload(req);
+        const authCheck = await getAdminPayload(req);
         if (authCheck.error) {
             return res.status(authCheck.error.status).json(authCheck.error.body);
         }
@@ -146,7 +154,7 @@ adminRouter.get("/inquiries", async (req, res) => {
 });
 adminRouter.patch("/inquiries/:id/status", async (req, res) => {
     try {
-        const authCheck = getAdminPayload(req);
+        const authCheck = await getAdminPayload(req);
         if (authCheck.error || !authCheck.authPayload) {
             const fallback = authCheck.error ?? {
                 status: 401,
@@ -224,6 +232,238 @@ adminRouter.patch("/inquiries/:id/status", async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to update inquiry status",
+        });
+    }
+});
+// User Management Routes
+const createUserSchema = zod_1.z.object({
+    email: zod_1.z.string().trim().toLowerCase().email("Valid email is required"),
+    password: zod_1.z.string().min(8, "Password must be at least 8 characters"),
+    role: zod_1.z.string().optional().default("user"),
+    isActive: zod_1.z.boolean().optional().default(true),
+});
+adminRouter.post("/users", async (req, res) => {
+    try {
+        const authCheck = await getAdminPayload(req);
+        if (authCheck.error) {
+            return res.status(authCheck.error.status).json(authCheck.error.body);
+        }
+        const parsedBody = createUserSchema.safeParse(req.body);
+        if (!parsedBody.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid request payload",
+                errors: parsedBody.error.flatten().fieldErrors,
+            });
+        }
+        const user = await (0, user_creation_1.createUser)(parsedBody.data);
+        return res.status(201).json({
+            success: true,
+            message: "User created successfully",
+            data: user,
+        });
+    }
+    catch (error) {
+        console.error("Create user error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error instanceof Error ? error.message : "Failed to create user",
+        });
+    }
+});
+adminRouter.get("/users", async (req, res) => {
+    try {
+        const authCheck = await getAdminPayload(req);
+        if (authCheck.error) {
+            return res.status(authCheck.error.status).json(authCheck.error.body);
+        }
+        const limit = parseInt(req.query.limit) || 50;
+        const users = await (0, user_creation_1.getAllUsers)(limit);
+        return res.status(200).json({
+            success: true,
+            data: { users, count: users.length },
+        });
+    }
+    catch (error) {
+        console.error("Get users error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch users",
+        });
+    }
+});
+const updateUserSchema = zod_1.z.object({
+    email: zod_1.z.string().trim().toLowerCase().email("Valid email is required").optional(),
+    role: zod_1.z.string().optional(),
+    isActive: zod_1.z.boolean().optional(),
+});
+adminRouter.patch("/users/:id", async (req, res) => {
+    try {
+        const authCheck = await getAdminPayload(req);
+        if (authCheck.error) {
+            return res.status(authCheck.error.status).json(authCheck.error.body);
+        }
+        const userId = req.params.id;
+        const parsedBody = updateUserSchema.safeParse(req.body);
+        if (!parsedBody.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid request payload",
+                errors: parsedBody.error.flatten().fieldErrors,
+            });
+        }
+        await (0, user_creation_1.updateUser)(userId, parsedBody.data);
+        return res.status(200).json({
+            success: true,
+            message: "User updated successfully",
+        });
+    }
+    catch (error) {
+        console.error("Update user error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error instanceof Error ? error.message : "Failed to update user",
+        });
+    }
+});
+adminRouter.delete("/users/:id", async (req, res) => {
+    try {
+        const authCheck = await getAdminPayload(req);
+        if (authCheck.error) {
+            return res.status(authCheck.error.status).json(authCheck.error.body);
+        }
+        const userId = req.params.id;
+        await (0, user_creation_1.deleteUser)(userId);
+        return res.status(200).json({
+            success: true,
+            message: "User deleted successfully",
+        });
+    }
+    catch (error) {
+        console.error("Delete user error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error instanceof Error ? error.message : "Failed to delete user",
+        });
+    }
+});
+// Service Management Routes
+const createServiceSchema = zod_1.z.object({
+    id: zod_1.z.string().trim().min(1),
+    title: zod_1.z.string().trim().min(1),
+    description: zod_1.z.string().trim().min(1),
+    iconName: zod_1.z.string().trim().min(1),
+    fullDetails: zod_1.z.string().trim().min(1),
+    imageUrl: zod_1.z.string().trim().min(1),
+    isActive: zod_1.z.boolean().optional().default(true),
+    sortOrder: zod_1.z.number().int().optional().default(0),
+});
+adminRouter.post("/services", async (req, res) => {
+    try {
+        const authCheck = await getAdminPayload(req);
+        if (authCheck.error) {
+            return res.status(authCheck.error.status).json(authCheck.error.body);
+        }
+        const parsedBody = createServiceSchema.safeParse(req.body);
+        if (!parsedBody.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid request payload",
+                errors: parsedBody.error.flatten().fieldErrors,
+            });
+        }
+        const service = await (0, service_management_1.createService)(parsedBody.data);
+        return res.status(201).json({
+            success: true,
+            message: "Service created successfully",
+            data: service,
+        });
+    }
+    catch (error) {
+        console.error("Create service error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error instanceof Error ? error.message : "Failed to create service",
+        });
+    }
+});
+adminRouter.get("/services/all", async (req, res) => {
+    try {
+        const authCheck = await getAdminPayload(req);
+        if (authCheck.error) {
+            return res.status(authCheck.error.status).json(authCheck.error.body);
+        }
+        const includeInactive = req.query.includeInactive === "true";
+        const services = await (0, service_management_1.getAllServices)(includeInactive);
+        return res.status(200).json({
+            success: true,
+            data: { services, count: services.length },
+        });
+    }
+    catch (error) {
+        console.error("Get services error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch services",
+        });
+    }
+});
+const updateServiceSchema = zod_1.z.object({
+    title: zod_1.z.string().trim().min(1).optional(),
+    description: zod_1.z.string().trim().min(1).optional(),
+    iconName: zod_1.z.string().trim().min(1).optional(),
+    fullDetails: zod_1.z.string().trim().min(1).optional(),
+    imageUrl: zod_1.z.string().trim().min(1).optional(),
+    isActive: zod_1.z.boolean().optional(),
+    sortOrder: zod_1.z.number().int().optional(),
+});
+adminRouter.patch("/services/:id", async (req, res) => {
+    try {
+        const authCheck = await getAdminPayload(req);
+        if (authCheck.error) {
+            return res.status(authCheck.error.status).json(authCheck.error.body);
+        }
+        const serviceId = req.params.id;
+        const parsedBody = updateServiceSchema.safeParse(req.body);
+        if (!parsedBody.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid request payload",
+                errors: parsedBody.error.flatten().fieldErrors,
+            });
+        }
+        await (0, service_management_1.updateService)(serviceId, parsedBody.data);
+        return res.status(200).json({
+            success: true,
+            message: "Service updated successfully",
+        });
+    }
+    catch (error) {
+        console.error("Update service error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error instanceof Error ? error.message : "Failed to update service",
+        });
+    }
+});
+adminRouter.delete("/services/:id", async (req, res) => {
+    try {
+        const authCheck = await getAdminPayload(req);
+        if (authCheck.error) {
+            return res.status(authCheck.error.status).json(authCheck.error.body);
+        }
+        const serviceId = req.params.id;
+        await (0, service_management_1.deleteService)(serviceId);
+        return res.status(200).json({
+            success: true,
+            message: "Service deleted successfully",
+        });
+    }
+    catch (error) {
+        console.error("Delete service error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error instanceof Error ? error.message : "Failed to delete service",
         });
     }
 });

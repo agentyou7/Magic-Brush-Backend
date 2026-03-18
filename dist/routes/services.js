@@ -8,20 +8,16 @@ const serviceDocSchema = zod_1.z.object({
     id: zod_1.z.string().trim().min(1),
     title: zod_1.z.string().trim().min(1),
     description: zod_1.z.string().trim().min(1),
-    iconName: zod_1.z.string().trim().min(1),
-    fullDetails: zod_1.z.string().trim().min(1),
-    imageUrl: zod_1.z.string().trim().min(1),
+    iconName: zod_1.z.string().trim().min(1).optional().default("fa-tools"),
+    fullDetails: zod_1.z.string().trim().optional().default(""),
+    imageUrl: zod_1.z.string().trim().optional().default(""),
     isActive: zod_1.z.boolean().optional().default(true),
     sortOrder: zod_1.z.number().int().optional().default(0),
 });
 exports.servicesRouter = (0, express_1.Router)();
 exports.servicesRouter.get("/", async (_req, res) => {
     try {
-        const snapshot = await firebase_1.firestoreDb
-            .collection("services")
-            .where("isActive", "==", true)
-            .orderBy("sortOrder", "asc")
-            .get();
+        const snapshot = await firebase_1.firestoreDb.collection("services").get();
         const services = snapshot.docs
             .map((doc) => {
             const data = doc.data();
@@ -42,15 +38,19 @@ exports.servicesRouter.get("/", async (_req, res) => {
                 iconName: service.iconName,
                 fullDetails: service.fullDetails,
                 imageUrl: service.imageUrl,
+                isActive: service.isActive,
                 sortOrder: service.sortOrder,
             };
         })
             .filter((service) => Boolean(service));
+        const activeServices = services
+            .filter((service) => service.isActive)
+            .sort((firstService, secondService) => firstService.sortOrder - secondService.sortOrder);
         return res.status(200).json({
             success: true,
             data: {
-                services,
-                count: services.length,
+                services: activeServices,
+                count: activeServices.length,
             },
         });
     }
