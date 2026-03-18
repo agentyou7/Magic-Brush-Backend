@@ -25,6 +25,7 @@ const app = (0, next_1.default)({ dev, hostname, port });
 const handle = app.getRequestHandler();
 app.prepare().then(() => {
     const server = (0, express_1.default)();
+    server.set("trust proxy", 1);
     // Middleware
     server.use((0, helmet_1.default)());
     server.use((0, cors_1.default)({

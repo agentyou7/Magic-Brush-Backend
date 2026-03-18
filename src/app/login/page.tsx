@@ -90,6 +90,7 @@ const LoginPage = () => {
       console.log('🚀 Submitting login form...');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -97,8 +98,28 @@ const LoginPage = () => {
       });
 
       console.log('📡 Response status:', response.status);
-      const result = await response.json();
+      const result = await readJsonSafely(response);
       console.log('📥 Response data:', result);
+
+      if (!response.ok || !result.success) {
+        console.error('❌ Login failed:', result?.message);
+        setStatus('error');
+        if (result?.errors) {
+          setFieldErrors(result.errors);
+        } else {
+          setErrorMessage(result?.message || 'Login failed. Please try again.');
+        }
+        return;
+      }
+
+      if (result.data?.requiresTwoFactor && result.data?.challengeToken) {
+        setChallengeToken(result.data.challengeToken);
+        setTwoFactorCode('');
+        setLoginStep('twoFactor');
+        setStatus('idle');
+        setErrorMessage('');
+        return;
+      }
 
       if (result.success) {
         console.log('✅ Login successful!');
@@ -118,30 +139,14 @@ const LoginPage = () => {
         // Redirect to dashboard after a short delay
         setTimeout(() => {
           console.log('🔄 Redirecting to dashboard...');
-          window.location.href = '/admin/dashboard';
+          window.location.assign('/admin/dashboard');
         }, 1200);
-      } else {
-        console.error('❌ Login failed:', result.message);
-        setStatus('error');
-        if (result.errors) {
-          setFieldErrors(result.errors);
-        } else {
-          setErrorMessage(result.message || 'Login failed. Please try again.');
-        }
       }
     } catch (error) {
       console.error('💥 Network error:', error);
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Login failed. Please try again.');
     }
-  };
-
-  const handleButtonClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const formEvent = new Event('submit', { cancelable: true }) as any;
-    formEvent.preventDefault = () => {};
-    handleSubmit(formEvent);
   };
 
   const handleTwoFactorSubmit = async (e: React.FormEvent) => {
@@ -158,6 +163,7 @@ const LoginPage = () => {
     try {
       const response = await fetch('/api/auth/verify-2fa-login', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -179,7 +185,7 @@ const LoginPage = () => {
 
       setStatus('success');
       setTimeout(() => {
-        window.location.href = '/admin/dashboard';
+        window.location.assign('/admin/dashboard');
       }, 1200);
     } catch (error) {
       setStatus('error');
@@ -299,7 +305,7 @@ const LoginPage = () => {
                 </p>
               </div>
             ) : loginStep === 'twoFactor' ? (
-              <form onSubmit={handleTwoFactorSubmit} className="space-y-6">
+              <form onSubmit={handleTwoFactorSubmit} method="post" className="space-y-6">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-slate-900">Enter 2FA Code</h2>
                   <p className="mt-2 text-slate-600">
@@ -352,7 +358,7 @@ const LoginPage = () => {
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} method="post" className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-900 uppercase tracking-wide ml-1">Email Address</label>
                   <input
@@ -383,7 +389,7 @@ const LoginPage = () => {
                       className="absolute inset-y-0 right-0 pr-4 flex items-center"
                     >
                       <span className="text-slate-400 hover:text-slate-600">
-                        {showPassword ? 'Show' : 'Hide'}
+                        {showPassword ? 'Hide' : 'Show'}
                       </span>
                     </button>
                   </div>
@@ -399,7 +405,6 @@ const LoginPage = () => {
 
                 <button
                   type="submit"
-                  onClick={handleButtonClick}
                   className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white font-black text-lg py-4 rounded-2xl transition-all shadow-xl shadow-orange-500/20 flex items-center justify-center space-x-3 transform active:scale-95"
                 >
                   <>

@@ -7,16 +7,31 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is authenticated
-    const token = localStorage.getItem('access_token');
-    
-    if (token) {
-      // User is logged in, redirect to dashboard
-      router.push('/admin/dashboard');
-    } else {
-      // User is not logged in, redirect to login
-      router.push('/login');
-    }
+    let isMounted = true;
+
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+        });
+
+        if (!isMounted) {
+          return;
+        }
+
+        router.replace(response.ok ? '/admin/dashboard' : '/login');
+      } catch {
+        if (isMounted) {
+          router.replace('/login');
+        }
+      }
+    };
+
+    void checkAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, [router]);
 
   // Show loading screen while checking authentication
