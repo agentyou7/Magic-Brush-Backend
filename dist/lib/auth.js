@@ -24,16 +24,9 @@ async function createFirebaseUser(email, password, displayName) {
 }
 async function signInWithFirebase(email) {
     try {
-        // Check if user exists in Firebase Auth
         const userRecord = await firebase_1.firebaseAuth.getUserByEmail(email);
-        // Create custom token for the user
-        const customToken = await firebase_1.firebaseAuth.createCustomToken(userRecord.uid, {
-            email: userRecord.email,
-            role: 'admin'
-        });
         return {
             user: userRecord,
-            customToken
         };
     }
     catch (error) {
@@ -62,7 +55,7 @@ async function hashPassword(password) {
     // No longer needed - Firebase handles password hashing
     return password;
 }
-async function verifyPassword(plainPassword, hashedPassword) {
+async function verifyPassword(_plainPassword, _hashedPassword) {
     // No longer needed - Firebase handles password verification
     return true;
 }

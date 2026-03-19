@@ -26,8 +26,28 @@ const handle = app.getRequestHandler();
 app.prepare().then(() => {
     const server = (0, express_1.default)();
     server.set("trust proxy", 1);
+    const isDev = process.env.NODE_ENV !== "production";
     // Middleware
-    server.use((0, helmet_1.default)());
+    server.use((0, helmet_1.default)({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: isDev
+                    ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
+                    : ["'self'", "'unsafe-inline'"],
+                styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+                imgSrc: ["'self'", "data:", "blob:", "https:"],
+                fontSrc: ["'self'", "data:", "https://cdnjs.cloudflare.com"],
+                connectSrc: isDev
+                    ? ["'self'", "https:", "ws:", "wss:"]
+                    : ["'self'", "https:"],
+                objectSrc: ["'none'"],
+                baseUri: ["'self'"],
+                frameAncestors: ["'self'"],
+                upgradeInsecureRequests: isDev ? null : [],
+            },
+        },
+    }));
     server.use((0, cors_1.default)({
         origin: env_1.env.CORS_ORIGIN.split(",").map((origin) => origin.trim()),
         credentials: true,

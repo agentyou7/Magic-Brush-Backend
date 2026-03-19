@@ -35,8 +35,6 @@ const LoginPage = () => {
   const [challengeToken, setChallengeToken] = useState('');
   const [loginStep, setLoginStep] = useState<'credentials' | 'twoFactor'>('credentials');
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
-  const [showPassword, setShowPassword] = useState(false);
-  const [showTwoFactorCode, setShowTwoFactorCode] = useState(false);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -87,7 +85,6 @@ const LoginPage = () => {
     }
 
     try {
-      console.log('🚀 Submitting login form...');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         credentials: 'include',
@@ -97,12 +94,9 @@ const LoginPage = () => {
         body: JSON.stringify(formData),
       });
 
-      console.log('📡 Response status:', response.status);
       const result = await readJsonSafely(response);
-      console.log('📥 Response data:', result);
 
       if (!response.ok || !result.success) {
-        console.error('❌ Login failed:', result?.message);
         setStatus('error');
         if (result?.errors) {
           setFieldErrors(result.errors);
@@ -122,28 +116,17 @@ const LoginPage = () => {
       }
 
       if (result.success) {
-        console.log('✅ Login successful!');
         setStatus('success');
         
-        // Store user data in localStorage
         if (result.data?.user) {
           localStorage.setItem('user', JSON.stringify(result.data.user));
-          console.log('💾 User data saved to localStorage');
         }
 
-        // If Firebase custom token is provided, you can use it for client-side Firebase auth
-        if (result.data?.customToken) {
-          console.log('🔥 Firebase custom token received for client-side auth');
-        }
-
-        // Redirect to dashboard after a short delay
         setTimeout(() => {
-          console.log('🔄 Redirecting to dashboard...');
           window.location.assign('/admin/dashboard');
         }, 1200);
       }
     } catch (error) {
-      console.error('💥 Network error:', error);
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Login failed. Please try again.');
     }
@@ -318,19 +301,14 @@ const LoginPage = () => {
                   <div className="relative">
                     <input
                       required
-                      type={showTwoFactorCode ? 'text' : 'password'}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
                       value={twoFactorCode}
                       onChange={(e) => setTwoFactorCode(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 pr-20 py-4 outline-none text-slate-900 placeholder:text-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10 transition-all font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 outline-none text-slate-900 placeholder:text-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10 transition-all font-medium"
                       placeholder="Enter 6-digit code"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowTwoFactorCode((prev) => !prev)}
-                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-sm font-semibold text-slate-500 hover:text-slate-700"
-                    >
-                      {showTwoFactorCode ? 'Hide' : 'Show'}
-                    </button>
                   </div>
                 </div>
 
@@ -377,21 +355,13 @@ const LoginPage = () => {
                   <div className="relative">
                     <input
                       required
-                      type={showPassword ? 'text' : 'password'}
+                      type="password"
+                      autoComplete="current-password"
                       value={formData.password}
                       onChange={(e) => handleFieldChange('password', e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 pr-12 py-4 outline-none text-slate-900 placeholder:text-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10 transition-all font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 outline-none text-slate-900 placeholder:text-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10 transition-all font-medium"
                       placeholder="Enter your password"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-4 flex items-center"
-                    >
-                      <span className="text-slate-400 hover:text-slate-600">
-                        {showPassword ? 'Hide' : 'Show'}
-                      </span>
-                    </button>
                   </div>
                   {fieldErrors.password ? <p className="text-red-600 text-xs ml-1">{fieldErrors.password}</p> : null}
                 </div>

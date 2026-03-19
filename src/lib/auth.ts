@@ -23,18 +23,9 @@ export async function createFirebaseUser(email: string, password: string, displa
 
 export async function signInWithFirebase(email: string) {
   try {
-    // Check if user exists in Firebase Auth
     const userRecord = await firebaseAuth.getUserByEmail(email);
-    
-    // Create custom token for the user
-    const customToken = await firebaseAuth.createCustomToken(userRecord.uid, {
-      email: userRecord.email,
-      role: 'admin'
-    });
-    
     return {
       user: userRecord,
-      customToken
     };
   } catch (error) {
     throw new Error(`Failed to sign in with Firebase: ${error}`);
@@ -65,8 +56,8 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(
-  plainPassword: string,
-  hashedPassword: string
+  _plainPassword: string,
+  _hashedPassword: string
 ): Promise<boolean> {
   // No longer needed - Firebase handles password verification
   return true;

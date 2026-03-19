@@ -18,8 +18,6 @@ const envSchema = zod_1.z.object({
     FIREBASE_CLIENT_EMAIL: zod_1.z.string().email(),
     FIREBASE_PRIVATE_KEY: zod_1.z.string().min(1),
     FIREBASE_STORAGE_BUCKET: zod_1.z.string().optional(),
-    JWT_SECRET: zod_1.z.string().min(32, "JWT_SECRET must be at least 32 characters"),
-    JWT_EXPIRES_IN: zod_1.z.string().default("1d"),
 });
 const parsedEnv = envSchema.safeParse(process.env);
 if (!parsedEnv.success) {

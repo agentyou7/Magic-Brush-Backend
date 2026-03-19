@@ -5,14 +5,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authRouter = void 0;
 exports.authenticate = authenticate;
+const crypto_1 = require("crypto");
 const express_1 = require("express");
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const zod_1 = require("zod");
 const firebase_1 = require("../lib/firebase");
 const auth_1 = require("../lib/auth");
 const totp_1 = require("../lib/totp");
-const env_1 = require("../lib/env");
 const loginBodySchema = zod_1.z.object({
     email: zod_1.z.string().trim().toLowerCase().email("Valid email is required"),
     password: zod_1.z.string().min(6, "Password must be at least 6 characters"),
@@ -44,6 +43,8 @@ const loginLimiter = (0, express_rate_limit_1.default)({
     legacyHeaders: false,
     message: { success: false, message: "Too many login attempts. Try again later." },
 });
+const TWO_FACTOR_CHALLENGE_TTL_MS = 10 * 60 * 1000;
+const loginChallengeStore = new Map();
 exports.authRouter = (0, express_1.Router)();
 function getRequestToken(req) {
     const authHeader = req.headers.authorization;
@@ -99,13 +100,28 @@ async function resolveAuthenticatedUser(req) {
     }
     throw new Error("Authentication required");
 }
-function issueTwoFactorChallenge(payload) {
-    return jsonwebtoken_1.default.sign(payload, env_1.env.JWT_SECRET, {
-        expiresIn: "10m",
+function issueTwoFactorChallenge(uid, idToken) {
+    const challengeToken = (0, crypto_1.randomUUID)();
+    loginChallengeStore.set(challengeToken, {
+        uid,
+        idToken,
+        expiresAt: Date.now() + TWO_FACTOR_CHALLENGE_TTL_MS,
     });
+    return challengeToken;
 }
 function verifyTwoFactorChallenge(token) {
-    return jsonwebtoken_1.default.verify(token, env_1.env.JWT_SECRET);
+    const challenge = loginChallengeStore.get(token);
+    if (!challenge) {
+        throw new Error("2FA challenge not found or expired");
+    }
+    if (challenge.expiresAt < Date.now()) {
+        loginChallengeStore.delete(token);
+        throw new Error("2FA challenge expired. Please log in again.");
+    }
+    return challenge;
+}
+function clearTwoFactorChallenge(token) {
+    loginChallengeStore.delete(token);
 }
 function buildUserPayload(userRecord) {
     return {
@@ -141,20 +157,15 @@ exports.authRouter.post("/login", loginLimiter, async (req, res) => {
     }
     const { email, password } = parsedBody.data;
     try {
-        console.log('🔐 Login attempt for:', email);
-        // Use Firebase Auth REST API to verify email and password
         const firebaseApiKey = process.env.FIREBASE_API_KEY;
-        console.log('🔑 Firebase API Key exists:', !!firebaseApiKey);
         if (!firebaseApiKey) {
-            throw new Error('Firebase API key not configured');
+            throw new Error("Firebase API key not configured");
         }
-        // Sign in with Firebase Auth REST API
         const authUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`;
-        console.log('🌐 Calling Firebase Auth URL:', authUrl);
         const firebaseResponse = await fetch(authUrl, {
-            method: 'POST',
+            method: "POST",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
             body: JSON.stringify({
                 email,
@@ -163,35 +174,18 @@ exports.authRouter.post("/login", loginLimiter, async (req, res) => {
             }),
         });
         const firebaseData = await firebaseResponse.json();
-        console.log('📥 Firebase Response Status:', firebaseResponse.status);
-        console.log('📥 Firebase Response Data:', firebaseData);
         if (!firebaseResponse.ok) {
-            console.error('❌ Firebase Auth Error:', firebaseData);
             return res.status(401).json({
                 success: false,
-                message: firebaseData.error?.message || 'Invalid email or password',
+                message: firebaseData.error?.message || "Invalid email or password",
             });
         }
-        console.log('✅ Firebase Auth Success, getting user record...');
-        // Get user record from Firebase Admin SDK
         const userRecord = await firebase_1.firebaseAuth.getUser(firebaseData.localId);
-        console.log('👤 User Record:', userRecord.email);
-        // Create custom token for optional client-side Firebase auth flows
-        const customToken = await firebase_1.firebaseAuth.createCustomToken(userRecord.uid, {
-            email: userRecord.email,
-            role: 'admin'
-        });
-        console.log('🎟️ Custom Token created');
         const user = buildUserPayload(userRecord);
         const securityDoc = await firebase_1.firestoreDb.collection("user_security").doc(userRecord.uid).get();
         const securityData = securityDoc.data();
         if (securityData?.totpSecret && securityData?.twoFactorEnabled) {
-            const challengeToken = issueTwoFactorChallenge({
-                uid: userRecord.uid,
-                email: userRecord.email ?? "",
-                role: "admin",
-                idToken: firebaseData.idToken,
-            });
+            const challengeToken = issueTwoFactorChallenge(userRecord.uid, firebaseData.idToken);
             return res.status(200).json({
                 success: true,
                 message: "2FA verification required",
@@ -202,23 +196,17 @@ exports.authRouter.post("/login", loginLimiter, async (req, res) => {
                 },
             });
         }
-        // Store the Firebase ID token in an httpOnly cookie for authenticated API requests
         applyLoginCookies(res, firebaseData.idToken, user);
-        // Return user info from Firebase Auth
-        const responseData = {
+        return res.status(200).json({
             success: true,
             message: "Login successful",
             data: {
                 user,
-                customToken: customToken, // For client-side Firebase auth
-                idToken: firebaseData.idToken, // Firebase ID token for client-side use
             },
-        };
-        console.log('🎉 Login successful, sending response');
-        return res.status(200).json(responseData);
+        });
     }
     catch (error) {
-        console.error("💥 Login error:", error);
+        console.error("Login error:", error);
         return res.status(500).json({
             success: false,
             message: error instanceof Error ? error.message : "Login failed. Please try again.",
@@ -239,6 +227,7 @@ exports.authRouter.post("/verify-2fa-login", async (req, res) => {
         const securityDoc = await firebase_1.firestoreDb.collection("user_security").doc(challenge.uid).get();
         const securityData = securityDoc.data();
         if (!securityData?.totpSecret || !securityData?.twoFactorEnabled) {
+            clearTwoFactorChallenge(parsedBody.data.challengeToken);
             return res.status(400).json({
                 success: false,
                 message: "2FA is not enabled for this account",
@@ -254,6 +243,7 @@ exports.authRouter.post("/verify-2fa-login", async (req, res) => {
         const userRecord = await firebase_1.firebaseAuth.getUser(challenge.uid);
         const user = buildUserPayload(userRecord);
         applyLoginCookies(res, challenge.idToken, user);
+        clearTwoFactorChallenge(parsedBody.data.challengeToken);
         return res.status(200).json({
             success: true,
             message: "Login successful",
@@ -274,16 +264,13 @@ exports.authRouter.post("/logout", async (req, res) => {
         const token = getRequestToken(req);
         if (token) {
             try {
-                // Verify the token to get user UID
                 const decodedToken = await (0, auth_1.verifyFirebaseToken)(token);
-                // Revoke Firebase user tokens
                 await (0, auth_1.revokeFirebaseUser)(decodedToken.uid);
             }
             catch (error) {
                 console.error("Error revoking Firebase tokens:", error);
             }
         }
-        // Clear the cookie
         res.clearCookie("access_token");
         res.clearCookie("user_data");
         return res.status(200).json({
@@ -310,7 +297,6 @@ exports.authRouter.get("/me", async (req, res) => {
         }
         try {
             const decodedToken = await (0, auth_1.verifyFirebaseToken)(token);
-            // Get user details from Firebase Auth
             const userRecord = await firebase_1.firebaseAuth.getUser(decodedToken.uid);
             return res.status(200).json({
                 success: true,
@@ -318,7 +304,7 @@ exports.authRouter.get("/me", async (req, res) => {
                     user: {
                         id: userRecord.uid,
                         email: userRecord.email,
-                        role: decodedToken.role || 'admin',
+                        role: decodedToken.role || "admin",
                         isActive: true,
                         createdAt: userRecord.metadata.creationTime,
                     },
@@ -579,7 +565,7 @@ async function authenticate(req) {
         return {
             id: userRecord.uid,
             email: userRecord.email,
-            role: decodedToken.role || 'admin',
+            role: decodedToken.role || "admin",
             isActive: true,
             createdAt: userRecord.metadata.creationTime,
         };
