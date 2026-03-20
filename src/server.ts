@@ -80,7 +80,5 @@ app.prepare().then(() => {
     handle(req, res, parsedUrl);
   });
 
-  createServer(server).listen(port, () => {
-    console.log(`MagicBrush backend listening on http://${hostname}:${port}`);
-  });
+  createServer(server).listen(port);
 });

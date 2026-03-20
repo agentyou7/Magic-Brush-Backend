@@ -127,6 +127,7 @@ const LoginPage = () => {
         }, 1200);
       }
     } catch (error) {
+      console.error('💥 Login error:', error);
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Login failed. Please try again.');
     }
@@ -375,13 +376,11 @@ const LoginPage = () => {
 
                 <button
                   type="submit"
-                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white font-black text-lg py-4 rounded-2xl transition-all shadow-xl shadow-orange-500/20 flex items-center justify-center space-x-3 transform active:scale-95"
+                  disabled={status === 'submitting'}
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-black text-lg py-4 rounded-2xl transition-all shadow-xl shadow-orange-500/20 flex items-center justify-center space-x-3 transform active:scale-95"
                 >
-                  <>
-                    <span>Sign In</span>
-                    <span>→</span>
-                  </>
-                  
+                  <span>{status === 'submitting' ? 'Signing In...' : 'Sign In'}</span>
+                  <span>{status === 'submitting' ? '...' : '→'}</span>
                 </button>
 
                 <div className="text-center pt-4 border-t border-slate-100">

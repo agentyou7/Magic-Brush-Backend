@@ -72,7 +72,5 @@ app.prepare().then(() => {
         const parsedUrl = (0, url_1.parse)(req.url, true);
         handle(req, res, parsedUrl);
     });
-    (0, http_1.createServer)(server).listen(port, () => {
-        console.log(`MagicBrush backend listening on http://${hostname}:${port}`);
-    });
+    (0, http_1.createServer)(server).listen(port);
 });

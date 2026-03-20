@@ -7,6 +7,12 @@ import { createService, updateService, deleteService, getAllServices } from "../
 
 const adminRouter = Router();
 
+const serviceFeatureSchema = z.object({
+  iconName: z.string().trim().min(1),
+  heading: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+});
+
 const inquiryStatusSchema = z.enum(["new", "called", "quoted", "won", "closed"]);
 type InquiryStatus = z.infer<typeof inquiryStatusSchema>;
 
@@ -406,10 +412,13 @@ adminRouter.delete("/users/:id", async (req, res) => {
 const createServiceSchema = z.object({
   id: z.string().trim().min(1),
   title: z.string().trim().min(1),
+  shortHeading: z.string().trim().min(1),
   description: z.string().trim().min(1),
   iconName: z.string().trim().min(1),
   fullDetails: z.string().trim().min(1),
   imageUrl: z.string().trim().min(1),
+  imagePublicId: z.string().trim().optional().default(""),
+  features: z.array(serviceFeatureSchema).min(2).max(3),
   isActive: z.boolean().optional().default(true),
   sortOrder: z.number().int().optional().default(0),
 });
@@ -470,10 +479,13 @@ adminRouter.get("/services/all", async (req, res) => {
 
 const updateServiceSchema = z.object({
   title: z.string().trim().min(1).optional(),
+  shortHeading: z.string().trim().min(1).optional(),
   description: z.string().trim().min(1).optional(),
   iconName: z.string().trim().min(1).optional(),
   fullDetails: z.string().trim().min(1).optional(),
   imageUrl: z.string().trim().min(1).optional(),
+  imagePublicId: z.string().trim().optional(),
+  features: z.array(serviceFeatureSchema).min(2).max(3).optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
 });

@@ -26,6 +26,7 @@ export default function AdminLayout({
 
   useEffect(() => {
     let isMounted = true;
+    let sessionCheckInterval: NodeJS.Timeout;
 
     const verifySession = async () => {
       try {
@@ -62,12 +63,39 @@ export default function AdminLayout({
       }
     };
 
+    // Initial session verification
     void verifySession();
+
+    // Set up periodic session check (every 5 minutes)
+    sessionCheckInterval = setInterval(verifySession, 5 * 60 * 1000);
+
+    // Set up visibility change listener to check session when tab becomes active
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !loading) {
+        void verifySession();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Set up focus listener to check session when window gains focus
+    const handleFocus = () => {
+      if (!loading) {
+        void verifySession();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       isMounted = false;
+      if (sessionCheckInterval) {
+        clearInterval(sessionCheckInterval);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
-  }, [router]);
+  }, [router, loading]);
 
   const handleLogout = async () => {
     try {

@@ -8,6 +8,11 @@ const user_creation_1 = require("../lib/user-creation");
 const service_management_1 = require("../lib/service-management");
 const adminRouter = (0, express_1.Router)();
 exports.adminRouter = adminRouter;
+const serviceFeatureSchema = zod_1.z.object({
+    iconName: zod_1.z.string().trim().min(1),
+    heading: zod_1.z.string().trim().min(1),
+    description: zod_1.z.string().trim().min(1),
+});
 const inquiryStatusSchema = zod_1.z.enum(["new", "called", "quoted", "won", "closed"]);
 const updateInquiryStatusSchema = zod_1.z.object({
     status: inquiryStatusSchema,
@@ -351,10 +356,13 @@ adminRouter.delete("/users/:id", async (req, res) => {
 const createServiceSchema = zod_1.z.object({
     id: zod_1.z.string().trim().min(1),
     title: zod_1.z.string().trim().min(1),
+    shortHeading: zod_1.z.string().trim().min(1),
     description: zod_1.z.string().trim().min(1),
     iconName: zod_1.z.string().trim().min(1),
     fullDetails: zod_1.z.string().trim().min(1),
     imageUrl: zod_1.z.string().trim().min(1),
+    imagePublicId: zod_1.z.string().trim().optional().default(""),
+    features: zod_1.z.array(serviceFeatureSchema).min(2).max(3),
     isActive: zod_1.z.boolean().optional().default(true),
     sortOrder: zod_1.z.number().int().optional().default(0),
 });
@@ -410,10 +418,13 @@ adminRouter.get("/services/all", async (req, res) => {
 });
 const updateServiceSchema = zod_1.z.object({
     title: zod_1.z.string().trim().min(1).optional(),
+    shortHeading: zod_1.z.string().trim().min(1).optional(),
     description: zod_1.z.string().trim().min(1).optional(),
     iconName: zod_1.z.string().trim().min(1).optional(),
     fullDetails: zod_1.z.string().trim().min(1).optional(),
     imageUrl: zod_1.z.string().trim().min(1).optional(),
+    imagePublicId: zod_1.z.string().trim().optional(),
+    features: zod_1.z.array(serviceFeatureSchema).min(2).max(3).optional(),
     isActive: zod_1.z.boolean().optional(),
     sortOrder: zod_1.z.number().int().optional(),
 });
