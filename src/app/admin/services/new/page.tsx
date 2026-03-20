@@ -298,7 +298,7 @@ const NewServicePage = () => {
           setError(result.error || 'Failed to save service');
         }
       } catch (fetchError) {
-        if (fetchError.name === 'AbortError') {
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
           console.error('💥 Request timeout - Firebase rules likely blocking write');
           setError('Save timeout: Please check Firebase security rules and try again');
         } else {
