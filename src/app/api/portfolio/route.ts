@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { firestoreDb } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy } from 'firebase-admin/firestore';
+import * as admin from 'firebase-admin';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
     for (const collectionName of possibleCollections) {
       try {
         console.log(`🔍 Trying collection: ${collectionName}`);
-        const portfolioCollection = collection(firestoreDb, collectionName);
-        const portfolioSnapshot = await getDocs(portfolioCollection); // Remove ordering to get all items
+        const portfolioCollection = firestoreDb.collection(collectionName);
+        const portfolioSnapshot = await portfolioCollection.get();
         
         if (!portfolioSnapshot.empty) {
           portfolioItems = portfolioSnapshot.docs.map(doc => ({

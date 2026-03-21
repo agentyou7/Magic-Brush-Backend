@@ -124,8 +124,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all services (both active and inactive)
-    const servicesCollection = collection(firestoreDb, 'services');
-    const servicesSnapshot = await getDocs(servicesCollection);
+    const servicesCollection = firestoreDb.collection('services');
+    const servicesSnapshot = await servicesCollection.get();
 
     const services = servicesSnapshot.docs.map(doc => ({
       id: doc.id,
