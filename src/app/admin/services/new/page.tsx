@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, X, Image as ImageIcon, Search, Check } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+import { handleUnauthorizedResponse } from '@/lib/client-auth';
 
 interface Feature {
   iconName: string;
@@ -271,6 +272,7 @@ const NewServicePage = () => {
           body: JSON.stringify(serviceData),
           signal: controller.signal,
         });
+        await handleUnauthorizedResponse(response, router);
 
         clearTimeout(timeoutId);
 

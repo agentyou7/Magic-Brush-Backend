@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import { handleUnauthorizedResponse, redirectToLogin } from '@/lib/client-auth';
 
 interface User {
   id: string;
@@ -26,17 +27,13 @@ export default function AdminLayout({
 
   useEffect(() => {
     let isMounted = true;
-    let sessionCheckInterval: NodeJS.Timeout;
 
     const verifySession = async () => {
       try {
         const response = await fetch('/api/auth/me', {
           credentials: 'include',
         });
-
-        if (!response.ok) {
-          throw new Error('Authentication required');
-        }
+        await handleUnauthorizedResponse(response, router);
 
         const result = await response.json();
         const authenticatedUser = result?.data?.user as User | undefined;
@@ -58,7 +55,7 @@ export default function AdminLayout({
         if (isMounted) {
           setUser(null);
           setLoading(false);
-          router.replace('/login');
+          redirectToLogin(router);
         }
       }
     };
@@ -67,7 +64,7 @@ export default function AdminLayout({
     void verifySession();
 
     // Set up periodic session check (every 5 minutes)
-    sessionCheckInterval = setInterval(verifySession, 5 * 60 * 1000);
+    const sessionCheckInterval = setInterval(verifySession, 5 * 60 * 1000);
 
     // Set up visibility change listener to check session when tab becomes active
     const handleVisibilityChange = () => {

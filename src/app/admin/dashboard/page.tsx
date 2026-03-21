@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { handleUnauthorizedResponse } from '@/lib/client-auth';
 
 interface User {
   id: string;
@@ -72,10 +73,7 @@ const DashboardPage = () => {
         const authResponse = await fetchWithTimeout('/api/auth/me', {
           credentials: 'include',
         });
-
-        if (!authResponse.ok) {
-          throw new Error('Authentication required');
-        }
+        await handleUnauthorizedResponse(authResponse, router);
 
         const authData = await authResponse.json();
         const authenticatedUser = authData?.data?.user;
@@ -119,6 +117,14 @@ const DashboardPage = () => {
           credentials: 'include',
         }),
       ]);
+
+      if (inquiriesResult.status === 'fulfilled' && inquiriesResult.value.status === 401) {
+        await handleUnauthorizedResponse(inquiriesResult.value, router);
+      }
+
+      if (usersResult.status === 'fulfilled' && usersResult.value.status === 401) {
+        await handleUnauthorizedResponse(usersResult.value, router);
+      }
 
       if (inquiriesResult.status === 'fulfilled' && inquiriesResult.value.ok) {
         const inquiriesData = await inquiriesResult.value.json();

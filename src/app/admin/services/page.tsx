@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Filter, X, Clock } from 'lucide-react';
+import { handleUnauthorizedResponse } from '@/lib/client-auth';
 
 interface Service {
   id: string;
@@ -59,10 +60,7 @@ const ServicesPage = () => {
           credentials: 'include',
         });
 
-        if (!authResponse.ok) {
-          router.replace('/login');
-          return;
-        }
+        await handleUnauthorizedResponse(authResponse, router);
 
         const response = await fetch('/api/admin/services/all?includeInactive=true', {
           method: 'GET',
@@ -71,6 +69,7 @@ const ServicesPage = () => {
             'Content-Type': 'application/json',
           },
         });
+        await handleUnauthorizedResponse(response, router);
 
         const data = await readJsonSafely(response);
 
@@ -139,6 +138,7 @@ const ServicesPage = () => {
         },
         body: JSON.stringify({ isActive: nextStatus }),
       });
+      await handleUnauthorizedResponse(response, router);
 
       const data = await readJsonSafely(response);
 
@@ -168,6 +168,7 @@ const ServicesPage = () => {
         method: 'DELETE',
         credentials: 'include',
       });
+      await handleUnauthorizedResponse(response, router);
 
       const data = await readJsonSafely(response);
 

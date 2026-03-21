@@ -2,52 +2,40 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { handleUnauthorizedResponse } from '@/lib/client-auth';
 
 interface PortfolioItem {
   id: string;
   title: string;
-  category: string;
-  image: string;
-  description: string;
-  beforeImage: string;
-  afterImage: string;
+  metaText: string;
+  imageUrl: string;
+  imagePublicId: string;
+  isActive: boolean;
+  createdAt?: string;
 }
 
-const mockPortfolio: PortfolioItem[] = [
-  {
-    id: '1',
-    title: 'Modern Kitchen Renovation',
-    category: 'Kitchen',
-    image: '/portfolio_kitchen.png',
-    description: 'Complete kitchen makeover with modern appliances and custom cabinets',
-    beforeImage: '/portfolio_before_kitchen.png',
-    afterImage: '/portfolio_after_kitchen.png',
-  },
-  {
-    id: '2',
-    title: 'Bathroom Transformation',
-    category: 'Bathroom',
-    image: '/portfolio_bathroom.png',
-    description: 'Luxury bathroom renovation with premium fixtures and tiling',
-    beforeImage: '/portfolio_before_bathroom.png',
-    afterImage: '/portfolio_after_bathroom.png',
-  },
-  {
-    id: '3',
-    title: 'Living Room Makeover',
-    category: 'Living Room',
-    image: '/portfolio_living.png',
-    description: 'Contemporary living room design with smart lighting solutions',
-    beforeImage: '/portfolio_before_living.png',
-    afterImage: '/portfolio_after_living.png',
-  },
-];
+async function readJsonSafely(response: Response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
 
 const PortfolioPage = () => {
   const router = useRouter();
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<PortfolioItem | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -58,13 +46,25 @@ const PortfolioPage = () => {
           credentials: 'include',
         });
 
-        if (!authResponse.ok) {
-          router.replace('/login');
-          return;
+        await handleUnauthorizedResponse(authResponse, router);
+
+        const response = await fetch('/api/admin/portfolio/all?includeInactive=true', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        await handleUnauthorizedResponse(response, router);
+        const data = await readJsonSafely(response);
+
+        if (!response.ok) {
+          throw new Error(data?.message || 'Failed to fetch portfolio items');
         }
 
         if (isMounted) {
-          setPortfolio(mockPortfolio);
+          setPortfolio(Array.isArray(data?.data?.portfolio) ? data.data.portfolio : []);
           setErrorMessage('');
         }
       } catch (error) {
@@ -89,6 +89,87 @@ const PortfolioPage = () => {
     };
   }, [router]);
 
+  const handleDeletePortfolioItem = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    setErrorMessage('');
+
+    try {
+      const response = await fetch(`/api/admin/portfolio/${deleteTarget.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      await handleUnauthorizedResponse(response, router);
+      const data = await readJsonSafely(response);
+
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || 'Failed to delete portfolio item');
+      }
+
+      if (deleteTarget.imagePublicId) {
+        await fetch('/api/upload', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ publicId: deleteTarget.imagePublicId }),
+        });
+      }
+
+      setPortfolio((currentItems) =>
+        currentItems.filter((item) => item.id !== deleteTarget.id)
+      );
+      setDeleteTarget(null);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Unable to delete this portfolio item right now.'
+      );
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async (portfolioId: string, nextStatus: boolean) => {
+    const previousPortfolio = portfolio;
+
+    setStatusUpdatingId(portfolioId);
+    setErrorMessage('');
+    setPortfolio((currentItems) =>
+      currentItems.map((item) =>
+        item.id === portfolioId ? { ...item, isActive: nextStatus } : item
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/admin/portfolio/${portfolioId}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isActive: nextStatus }),
+      });
+
+      await handleUnauthorizedResponse(response, router);
+      const data = await readJsonSafely(response);
+
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || 'Failed to update portfolio status');
+      }
+    } catch (error) {
+      setPortfolio(previousPortfolio);
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Unable to update this portfolio item right now.'
+      );
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -105,10 +186,14 @@ const PortfolioPage = () => {
     <div className="max-w-7xl mx-auto">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Portfolio Management</h1>
+          <h1 className="mb-2 text-3xl font-bold text-slate-900">Portfolio Management</h1>
           <p className="text-slate-600">Showcase your best work and transformations</p>
         </div>
-        <button className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-all duration-200">
+        <button
+          type="button"
+          onClick={() => router.push('/admin/portfolio/new')}
+          className="rounded-xl bg-orange-500 px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-orange-600"
+        >
           <i className="fas fa-plus mr-2"></i>
           Add Portfolio Item
         </button>
@@ -120,71 +205,120 @@ const PortfolioPage = () => {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {portfolio.map((item) => (
           <div
             key={item.id}
-            className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow duration-200"
+            className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 hover:shadow-lg"
           >
-            <div className="h-64 bg-gradient-to-br from-slate-100 to-slate-200 relative">
+            <div className="relative h-64 bg-gradient-to-br from-slate-100 to-slate-200">
               <img
-                src={item.image}
+                src={item.imageUrl}
                 alt={item.title}
-                className="w-full h-full object-cover"
+                className="h-full w-full object-cover"
                 onError={(event) => {
                   event.currentTarget.src = `https://picsum.photos/seed/${item.id}/400/300.jpg`;
                 }}
               />
-              <div className="absolute top-4 right-4">
-                <span className="px-3 py-1 bg-orange-500 text-white text-xs font-medium rounded-full">
-                  {item.category}
+              <div className="absolute right-4 top-4">
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    item.isActive ? 'bg-orange-500 text-white' : 'bg-slate-900 text-white'
+                  }`}
+                >
+                  {item.isActive ? 'Active' : 'Hidden'}
                 </span>
               </div>
             </div>
 
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">{item.title}</h3>
-              <p className="text-slate-600 text-sm mb-4 line-clamp-2">{item.description}</p>
+              <h3 className="mb-3 text-lg font-semibold text-slate-900">{item.title}</h3>
+              <p className="mb-4 line-clamp-3 text-sm text-slate-600">{item.metaText}</p>
 
               <div className="flex space-x-2">
-                <button className="flex-1 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-all duration-200">
-                  <i className="fas fa-edit"></i>
+                <button
+                  type="button"
+                  onClick={() => handleToggleStatus(item.id, !item.isActive)}
+                  disabled={statusUpdatingId === item.id}
+                  className={`flex-1 rounded-xl px-4 py-2 font-medium text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    item.isActive
+                      ? 'bg-emerald-500 hover:bg-emerald-600'
+                      : 'bg-amber-500 hover:bg-amber-600'
+                  }`}
+                >
+                  <i className={`fas ${item.isActive ? 'fa-toggle-on' : 'fa-toggle-off'} mr-2`}></i>
+                  {statusUpdatingId === item.id
+                    ? 'Updating...'
+                    : item.isActive
+                      ? 'Turn Off'
+                      : 'Turn On'}
                 </button>
-                <button className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium transition-all duration-200">
-                  <i className="fas fa-trash"></i>
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(item)}
+                  disabled={deleteLoading && deleteTarget?.id === item.id}
+                  className="flex-1 rounded-xl bg-slate-200 px-4 py-2 font-medium text-slate-700 transition-all duration-200 hover:bg-slate-300"
+                >
+                  <i className="fas fa-trash mr-2"></i>
+                  Delete
                 </button>
               </div>
             </div>
           </div>
         ))}
 
-        <div className="bg-white rounded-2xl shadow-sm border-2 border-dashed border-slate-300 overflow-hidden hover:border-orange-400 transition-colors duration-200 cursor-pointer">
-          <div className="h-64 flex items-center justify-center">
+        <button
+          type="button"
+          onClick={() => router.push('/admin/portfolio/new')}
+          className="cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-white text-left shadow-sm transition-colors duration-200 hover:border-orange-400"
+        >
+          <div className="flex h-64 items-center justify-center">
             <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100">
                 <i className="fas fa-plus text-2xl text-orange-500"></i>
               </div>
-              <p className="text-slate-600 font-medium">Add Portfolio Item</p>
+              <p className="font-medium text-slate-600">Add Portfolio Item</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {deleteTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+            <div className="border-b border-slate-200 p-6">
+              <h2 className="text-xl font-semibold text-slate-900">Delete Portfolio Item?</h2>
+            </div>
+
+            <div className="p-6">
+              <p className="text-sm text-slate-600">
+                Are you sure you want to delete{' '}
+                <span className="font-semibold text-slate-900">{deleteTarget.title}</span>?
+              </p>
+              <p className="mt-2 text-sm text-slate-500">This action cannot be undone.</p>
+            </div>
+
+            <div className="flex items-center gap-3 border-t border-slate-200 p-6">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteLoading}
+                className="flex-1 rounded-xl border border-slate-300 px-4 py-2 font-medium text-slate-700 transition-all duration-200 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeletePortfolioItem}
+                disabled={deleteLoading}
+                className="flex-1 rounded-xl bg-red-500 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-red-600 disabled:opacity-50"
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete'}
+              </button>
             </div>
           </div>
         </div>
-      </div>
-
-      {portfolio.length === 0 && (
-        <div className="text-center py-16">
-          <div className="w-24 h-24 bg-orange-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
-            <i className="fas fa-images text-3xl text-orange-500"></i>
-          </div>
-          <h3 className="text-xl font-semibold text-slate-900 mb-2">No Portfolio Items Yet</h3>
-          <p className="text-slate-600 max-w-md mx-auto">
-            Start by adding your completed projects to showcase your expertise to potential clients.
-          </p>
-          <button className="mt-6 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-all duration-200">
-            <i className="fas fa-plus mr-2"></i>
-            Add Your First Project
-          </button>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 };

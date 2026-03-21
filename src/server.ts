@@ -11,6 +11,7 @@ import { env } from "./lib/env";
 import { authRouter } from "./routes/auth";
 import { contactRouter } from "./routes/contact";
 import { adminRouter } from "./routes/admin";
+import { portfolioRouter } from "./routes/portfolio";
 import { servicesRouter } from "./routes/services";
 
 const dev = process.env.NODE_ENV !== "production";
@@ -72,6 +73,7 @@ app.prepare().then(() => {
   server.use("/api/auth", authRouter);
   server.use("/api/contact", contactRouter);
   server.use("/api/services", servicesRouter);
+  server.use("/api/portfolio", portfolioRouter);
   server.use("/api/admin", adminRouter);
 
   // Handle all other requests with Next.js

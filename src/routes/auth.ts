@@ -92,31 +92,18 @@ async function resolveAuthenticatedUser(req: Request): Promise<{
 }> {
   const token = getRequestToken(req);
 
-  if (token) {
-    try {
-      const decodedToken = await verifyFirebaseToken(token);
-      const userRecord = await firebaseAuth.getUser(decodedToken.uid);
-
-      if (userRecord.email) {
-        return {
-          id: userRecord.uid,
-          email: userRecord.email,
-        };
-      }
-    } catch {
-      // Fall back to user_data cookie below.
-    }
+  if (!token) {
+    throw new Error("Authentication required");
   }
 
-  const userData = req.cookies?.user_data;
-  if (typeof userData === "string") {
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser?.id && parsedUser?.email) {
-      return {
-        id: String(parsedUser.id),
-        email: String(parsedUser.email),
-      };
-    }
+  const decodedToken = await verifyFirebaseToken(token);
+  const userRecord = await firebaseAuth.getUser(decodedToken.uid);
+
+  if (userRecord.email) {
+    return {
+      id: userRecord.uid,
+      email: userRecord.email,
+    };
   }
 
   throw new Error("Authentication required");
@@ -379,20 +366,8 @@ authRouter.get("/me", async (req, res) => {
         },
       });
     } catch (tokenError) {
-      const userData = req.cookies?.user_data;
-      if (userData) {
-        try {
-          const parsedUser = JSON.parse(userData);
-          return res.status(200).json({
-            success: true,
-            data: {
-              user: parsedUser,
-            },
-          });
-        } catch {
-          throw new Error("Invalid user data");
-        }
-      }
+      res.clearCookie("access_token");
+      res.clearCookie("user_data");
       throw tokenError;
     }
   } catch (error) {

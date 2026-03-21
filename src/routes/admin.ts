@@ -4,6 +4,12 @@ import { z } from "zod";
 import { firestoreDb, firebaseAuth } from "../lib/firebase";
 import { createUser, updateUser, deleteUser, getAllUsers } from "../lib/user-creation";
 import { createService, updateService, deleteService, getAllServices } from "../lib/service-management";
+import {
+  createPortfolioItem,
+  updatePortfolioItem,
+  deletePortfolioItem,
+  getAllPortfolioItems,
+} from "../lib/portfolio-management";
 
 const adminRouter = Router();
 
@@ -11,6 +17,25 @@ const serviceFeatureSchema = z.object({
   iconName: z.string().trim().min(1),
   heading: z.string().trim().min(1),
   description: z.string().trim().min(1),
+});
+
+const createPortfolioSchema = z.object({
+  id: z.string().trim().min(1),
+  title: z.string().trim().min(1),
+  metaText: z.string().trim().min(1),
+  imageUrl: z.string().trim().min(1),
+  imagePublicId: z.string().trim().optional().default(""),
+  isActive: z.boolean().optional().default(true),
+  sortOrder: z.number().int().optional().default(0),
+});
+
+const updatePortfolioSchema = z.object({
+  title: z.string().trim().min(1).optional(),
+  metaText: z.string().trim().min(1).optional(),
+  imageUrl: z.string().trim().min(1).optional(),
+  imagePublicId: z.string().trim().optional(),
+  isActive: z.boolean().optional(),
+  sortOrder: z.number().int().optional(),
 });
 
 const inquiryStatusSchema = z.enum(["new", "called", "quoted", "won", "closed"]);
@@ -541,6 +566,115 @@ adminRouter.delete("/services/:id", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : "Failed to delete service",
+    });
+  }
+});
+
+adminRouter.post("/portfolio", async (req, res) => {
+  try {
+    const authCheck = await getAdminPayload(req);
+    if (authCheck.error) {
+      return res.status(authCheck.error.status).json(authCheck.error.body);
+    }
+
+    const parsedBody = createPortfolioSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request payload",
+        errors: parsedBody.error.flatten().fieldErrors,
+      });
+    }
+
+    const portfolioItem = await createPortfolioItem(parsedBody.data);
+    return res.status(201).json({
+      success: true,
+      message: "Portfolio item created successfully",
+      data: portfolioItem,
+    });
+  } catch (error) {
+    console.error("Create portfolio item error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to create portfolio item",
+    });
+  }
+});
+
+adminRouter.get("/portfolio/all", async (req, res) => {
+  try {
+    const authCheck = await getAdminPayload(req);
+    if (authCheck.error) {
+      return res.status(authCheck.error.status).json(authCheck.error.body);
+    }
+
+    const includeInactive = req.query.includeInactive === "true";
+    const portfolio = await getAllPortfolioItems(includeInactive);
+
+    return res.status(200).json({
+      success: true,
+      data: { portfolio, count: portfolio.length },
+    });
+  } catch (error) {
+    console.error("Get portfolio items error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch portfolio items",
+    });
+  }
+});
+
+adminRouter.patch("/portfolio/:id", async (req, res) => {
+  try {
+    const authCheck = await getAdminPayload(req);
+    if (authCheck.error) {
+      return res.status(authCheck.error.status).json(authCheck.error.body);
+    }
+
+    const portfolioId = req.params.id;
+    const parsedBody = updatePortfolioSchema.safeParse(req.body);
+
+    if (!parsedBody.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request payload",
+        errors: parsedBody.error.flatten().fieldErrors,
+      });
+    }
+
+    await updatePortfolioItem(portfolioId, parsedBody.data);
+    return res.status(200).json({
+      success: true,
+      message: "Portfolio item updated successfully",
+    });
+  } catch (error) {
+    console.error("Update portfolio item error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to update portfolio item",
+    });
+  }
+});
+
+adminRouter.delete("/portfolio/:id", async (req, res) => {
+  try {
+    const authCheck = await getAdminPayload(req);
+    if (authCheck.error) {
+      return res.status(authCheck.error.status).json(authCheck.error.body);
+    }
+
+    const portfolioId = req.params.id;
+    await deletePortfolioItem(portfolioId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Portfolio item deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete portfolio item error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to delete portfolio item",
     });
   }
 });
