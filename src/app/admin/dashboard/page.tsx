@@ -57,8 +57,8 @@ const DashboardPage = () => {
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState({
     totalInquiries: 0,
-    newInquiries: 0,
-    totalUsers: 0,
+    totalServices: 0,
+    totalPortfolio: 0,
     activeUsers: 0,
   });
   const [recentInquiries, setRecentInquiries] = useState<Inquiry[]>([]);
@@ -109,11 +109,17 @@ const DashboardPage = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [inquiriesResult, usersResult] = await Promise.allSettled([
+      const [inquiriesResult, usersResult, servicesResult, portfolioResult] = await Promise.allSettled([
         fetchWithTimeout('/api/admin/inquiries', {
           credentials: 'include',
         }),
         fetchWithTimeout('/api/admin/users', {
+          credentials: 'include',
+        }),
+        fetchWithTimeout('/api/services', {
+          credentials: 'include',
+        }),
+        fetchWithTimeout('/api/portfolio', {
           credentials: 'include',
         }),
       ]);
@@ -134,7 +140,6 @@ const DashboardPage = () => {
         setStats((previousStats) => ({
           ...previousStats,
           totalInquiries: inquiries.length,
-          newInquiries: inquiries.filter((inquiry: Inquiry) => inquiry.status === 'new').length,
         }));
       }
 
@@ -144,9 +149,37 @@ const DashboardPage = () => {
 
         setStats((previousStats) => ({
           ...previousStats,
-          totalUsers: users.length,
           activeUsers: users.filter((adminUser: User) => adminUser.isActive).length,
         }));
+      }
+
+      if (servicesResult.status === 'fulfilled' && servicesResult.value.ok) {
+        const servicesData = await servicesResult.value.json();
+        const services = servicesData.data?.services || [];
+
+        setStats((previousStats) => ({
+          ...previousStats,
+          totalServices: services.length,
+        }));
+      }
+
+      if (portfolioResult.status === 'fulfilled') {
+        if (portfolioResult.value.ok) {
+          const portfolioData = await portfolioResult.value.json();
+          const portfolio = portfolioData.data?.portfolio || [];
+          console.log('📁 Portfolio data fetched:', portfolio.length, 'items');
+
+          setStats((previousStats) => ({
+            ...previousStats,
+            totalPortfolio: portfolio.length,
+          }));
+        } else {
+          console.error('❌ Portfolio API error:', portfolioResult.value.status);
+          const errorData = await portfolioResult.value.json().catch(() => ({}));
+          console.error('❌ Portfolio error details:', errorData);
+        }
+      } else {
+        console.error('❌ Portfolio API promise rejected:', portfolioResult.reason);
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -223,30 +256,30 @@ const DashboardPage = () => {
 
           <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-100">
-                <i className="fas fa-bell text-xl text-green-600"></i>
-              </div>
-              <span className="text-2xl font-bold text-slate-900">{stats.newInquiries}</span>
-            </div>
-            <h3 className="font-semibold text-slate-900">New Inquiries</h3>
-            <p className="text-sm text-slate-600">Awaiting response</p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-lg">
-            <div className="mb-4 flex items-center justify-between">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-100">
-                <i className="fas fa-users text-xl text-purple-600"></i>
+                <i className="fas fa-cogs text-xl text-purple-600"></i>
               </div>
-              <span className="text-2xl font-bold text-slate-900">{stats.totalUsers}</span>
+              <span className="text-2xl font-bold text-slate-900">{stats.totalServices}</span>
             </div>
-            <h3 className="font-semibold text-slate-900">Total Users</h3>
-            <p className="text-sm text-slate-600">Registered accounts</p>
+            <h3 className="font-semibold text-slate-900">Total Services</h3>
+            <p className="text-sm text-slate-600">Available services</p>
           </div>
 
           <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100">
-                <i className="fas fa-user-check text-xl text-orange-600"></i>
+                <i className="fas fa-briefcase text-xl text-orange-600"></i>
+              </div>
+              <span className="text-2xl font-bold text-slate-900">{stats.totalPortfolio}</span>
+            </div>
+            <h3 className="font-semibold text-slate-900">Total Portfolio</h3>
+            <p className="text-sm text-slate-600">Portfolio projects</p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-lg">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-100">
+                <i className="fas fa-user-check text-xl text-green-600"></i>
               </div>
               <span className="text-2xl font-bold text-slate-900">{stats.activeUsers}</span>
             </div>

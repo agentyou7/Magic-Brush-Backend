@@ -204,20 +204,20 @@ const ServicesPage = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Services Management</h1>
-          <p className="text-slate-600">Manage your service offerings</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Services Management</h1>
+          <p className="text-slate-600 text-sm sm:text-base">Manage your service offerings</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className={`relative rounded-xl ${searchQuery !== '' ? 'border-2 border-orange-500' : ''}`}>
             <input
               type="text"
               placeholder="Search services..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`pl-10 pr-10 py-3 bg-white border rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent w-64 ${
+              className={`pl-10 pr-10 py-3 bg-white border rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent w-full sm:w-64 ${
                 searchQuery !== '' ? 'border-orange-500' : 'border-slate-200'
               }`}
             />
@@ -245,24 +245,24 @@ const ServicesPage = () => {
           </div>
           <button 
             onClick={() => setShowFilterModal(true)}
-            className={`relative px-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center gap-2 ${
+            className={`relative px-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
               hasActiveFilters 
                 ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25' 
                 : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
             }`}
           >
             <Filter className="w-4 h-4" />
-            <span>Filter</span>
+            <span className="hidden sm:inline">Filter</span>
             {hasActiveFilters && (
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-600 rounded-full"></span>
             )}
           </button>
           <button 
             onClick={() => router.push('/admin/services/new')}
-            className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-all duration-200"
+            className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2"
           >
-            <i className="fas fa-plus mr-2"></i>
-            New
+            <i className="fas fa-plus"></i>
+            <span className="hidden sm:inline">New</span>
           </button>
         </div>
       </div>
@@ -273,13 +273,13 @@ const ServicesPage = () => {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {filteredServices.map((service) => (
           <div
             key={service.id}
             className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow duration-200"
           >
-            <div className="h-48 bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center relative">
+            <div className="h-40 sm:h-48 bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center relative">
               {service.imageUrl ? (
                 <img 
                   src={service.imageUrl} 
@@ -288,19 +288,19 @@ const ServicesPage = () => {
                 />
               ) : (
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-orange-200 rounded-2xl flex items-center justify-center mx-auto mb-2">
-                    <i className={`fas fa-${service.iconName.toLowerCase()} text-2xl text-orange-500`}></i>
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-200 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                    <i className={`fas fa-${service.iconName.toLowerCase()} text-xl sm:text-2xl text-orange-500`}></i>
                   </div>
-                  <p className="text-orange-600 font-medium">{service.iconName}</p>
+                  <p className="text-orange-600 font-medium text-sm">{service.iconName}</p>
                 </div>
               )}
             </div>
 
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-slate-900">{service.title}</h3>
+            <div className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <h3 className="text-base sm:text-lg font-semibold text-slate-900 line-clamp-1">{service.title}</h3>
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${
                     service.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                   }`}
                 >
@@ -308,46 +308,29 @@ const ServicesPage = () => {
                 </span>
               </div>
 
-              <p className="text-slate-600 text-sm mb-2 font-medium">{service.shortHeading}</p>
-              <p className="text-slate-500 text-sm mb-4 line-clamp-2">{service.description}</p>
+              <p className="text-slate-600 text-xs sm:text-sm mb-2 font-medium line-clamp-1">{service.shortHeading}</p>
+              <p className="text-slate-500 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2">{service.description}</p>
 
-              <div className="mb-4">
+              <div className="mb-3 sm:mb-4">
                 <p className="text-xs text-slate-500 font-medium mb-1">Features:</p>
                 <div className="space-y-1">
                   {service.features.slice(0, 2).map((feature, index) => (
                     <div key={feature.id} className="flex items-center gap-2 text-xs text-slate-600">
                       <i className={`fas fa-${feature.iconName.toLowerCase()} text-orange-500`}></i>
-                      <span>{feature.heading}</span>
+                      <span className="line-clamp-1">{feature.heading}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="flex space-x-2">
-                <button
-                  type="button"
-                  onClick={() => handleToggleStatus(service.id, !service.isActive)}
-                  disabled={statusUpdatingId === service.id}
-                  className={`flex-1 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
-                    service.isActive
-                      ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                      : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                  } disabled:opacity-60 disabled:cursor-not-allowed`}
-                >
-                  <i className={`fas ${service.isActive ? 'fa-toggle-on' : 'fa-toggle-off'} mr-2`}></i>
-                  {statusUpdatingId === service.id
-                    ? 'Updating...'
-                    : service.isActive
-                      ? 'Turn Off'
-                      : 'Turn On'}
+                <button className="flex-1 px-3 sm:px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-all duration-200 text-xs sm:text-sm">
+                  <i className="fas fa-edit mr-1"></i>
+                  <span className="hidden sm:inline">Edit</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteTarget(service)}
-                  className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium transition-all duration-200"
-                >
+                <button className="flex-1 px-3 sm:px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium transition-all duration-200 text-xs sm:text-sm">
                   <i className="fas fa-trash mr-1"></i>
-                  Delete
+                  <span className="hidden sm:inline">Delete</span>
                 </button>
               </div>
             </div>
@@ -357,14 +340,14 @@ const ServicesPage = () => {
         <button
           type="button"
           onClick={() => router.push('/admin/services/new')}
-          className="bg-white rounded-2xl shadow-sm border-2 border-dashed border-slate-300 overflow-hidden hover:border-orange-400 transition-colors duration-200 cursor-pointer text-left"
+          className="bg-white rounded-2xl shadow-sm border-2 border-dashed border-slate-300 overflow-hidden hover:border-orange-400 transition-colors duration-200 cursor-pointer"
         >
-          <div className="h-48 flex items-center justify-center">
+          <div className="h-40 sm:h-48 flex items-center justify-center">
             <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-plus text-2xl text-orange-500"></i>
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <i className="fas fa-plus text-xl sm:text-2xl text-orange-500"></i>
               </div>
-              <p className="text-slate-600 font-medium">Add New Service</p>
+              <p className="text-slate-600 font-medium text-sm sm:text-base px-4">Add New Service</p>
             </div>
           </div>
         </button>

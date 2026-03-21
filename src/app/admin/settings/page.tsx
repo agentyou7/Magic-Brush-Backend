@@ -273,30 +273,30 @@ const SettingsPage = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Settings</h1>
-        <p className="text-slate-600">Manage your account settings and preferences</p>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Settings</h1>
+        <p className="text-slate-600 text-sm sm:text-base">Manage your account settings and preferences</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Profile Settings */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Profile Card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-900">Profile Information</h2>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Profile Information</h2>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
                 <input
                   type="email"
                   value={user.email}
                   disabled
-                  className="w-full cursor-not-allowed pointer-events-none px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-500"
+                  className="w-full cursor-not-allowed pointer-events-none px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-500 text-sm sm:text-base"
                 />
               </div>
               
@@ -306,7 +306,7 @@ const SettingsPage = () => {
                   type="text"
                   value={user.role}
                   disabled
-                  className="w-full cursor-not-allowed pointer-events-none px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-500"
+                  className="w-full cursor-not-allowed pointer-events-none px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-500 text-sm sm:text-base"
                 />
               </div>
               
@@ -316,21 +316,21 @@ const SettingsPage = () => {
                   type="text"
                   value={new Date(user.createdAt).toLocaleDateString()}
                   disabled
-                  className="w-full cursor-not-allowed pointer-events-none px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-500"
+                  className="w-full cursor-not-allowed pointer-events-none px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-500 text-sm sm:text-base"
                 />
               </div>
             </div>
           </div>
 
           {/* Security Settings */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-6">Security Settings</h2>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-900 mb-4 sm:mb-6">Security Settings</h2>
             
-            <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-                <div>
-                  <p className="font-medium text-slate-900">2FA</p>
-                  <p className="text-sm text-slate-500">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:px-5 sm:py-4 gap-3 sm:gap-0">
+                <div className="flex-1">
+                  <p className="font-medium text-slate-900 text-sm sm:text-base">2FA</p>
+                  <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
                     {twoFactorStatus.isSetup
                       ? twoFactorStatus.enabled
                         ? 'Authenticator app protection is turned on'
@@ -339,37 +339,37 @@ const SettingsPage = () => {
                   </p>
                 </div>
                 {isTwoFactorLoading ? (
-                  <div className="h-11 w-24 animate-pulse rounded-xl bg-slate-200"></div>
+                  <div className="h-8 sm:h-11 w-16 sm:w-24 animate-pulse rounded-xl bg-slate-200"></div>
                 ) : twoFactorStatus.isSetup ? (
                   <button
                     onClick={handleToggleTwoFactor}
                     disabled={isTogglingTwoFactor}
                     aria-label={twoFactorStatus.enabled ? 'Turn off 2FA' : 'Turn on 2FA'}
-                    className={`relative inline-flex h-10 w-20 items-center rounded-full px-1 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 ${
+                    className={`relative inline-flex h-8 sm:h-10 w-14 sm:w-20 items-center rounded-full px-1 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 ${
                       twoFactorStatus.enabled
                         ? 'bg-green-500'
                         : 'bg-slate-300'
                     }`}
                   >
                     <span
-                      className={`absolute text-[11px] font-semibold uppercase tracking-wide transition-all duration-200 ${
+                      className={`absolute text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide transition-all duration-200 ${
                         twoFactorStatus.enabled
-                          ? 'left-2.5 text-white'
-                          : 'right-2.5 text-slate-700'
+                          ? 'left-2 sm:left-2.5 text-white'
+                          : 'right-2 sm:right-2.5 text-slate-700'
                       }`}
                     >
                       {isTogglingTwoFactor ? '...' : twoFactorStatus.enabled ? 'On' : 'Off'}
                     </span>
                     <span
-                      className={`inline-block h-8 w-8 transform rounded-full bg-white shadow-md transition-all duration-200 ${
-                        twoFactorStatus.enabled ? 'translate-x-10' : 'translate-x-0'
+                      className={`inline-block h-6 w-6 sm:h-8 sm:w-8 transform rounded-full bg-white shadow-md transition-all duration-200 ${
+                        twoFactorStatus.enabled ? 'translate-x-6 sm:translate-x-10' : 'translate-x-0'
                       }`}
                     />
                   </button>
                 ) : (
                   <button
                     onClick={handleSetupTwoFactor}
-                    className="rounded-xl bg-slate-900 px-5 py-2.5 font-medium text-white transition-all duration-200 hover:bg-slate-800"
+                    className="rounded-xl bg-slate-900 px-3 sm:px-5 py-2 sm:py-2.5 font-medium text-white transition-all duration-200 hover:bg-slate-800 text-xs sm:text-sm"
                   >
                     Setup
                   </button>
@@ -381,23 +381,23 @@ const SettingsPage = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* System Info */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">System Information</h2>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-900 mb-3 sm:mb-4">System Information</h2>
             
-            <div className="space-y-3 text-sm">
+            <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
               <div className="flex justify-between">
                 <span className="text-slate-500">Version</span>
                 <span className="font-medium text-slate-900">v1.0.0</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Last Login</span>
-                <span className="font-medium text-slate-900">{new Date().toLocaleString()}</span>
+                <span className="font-medium text-slate-900 text-right">{new Date().toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Browser</span>
-                <span className="font-medium text-slate-900">{typeof window !== 'undefined' ? window.navigator.userAgent.split(' ')[0] : 'Unknown'}</span>
+                <span className="font-medium text-slate-900 text-right">{typeof window !== 'undefined' ? window.navigator.userAgent.split(' ')[0] : 'Unknown'}</span>
               </div>
             </div>
           </div>

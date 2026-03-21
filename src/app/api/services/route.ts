@@ -110,31 +110,51 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const snapshot = await firestoreDb.collection("services").get();
+    console.log('🔥 Fetching all services from Firebase...');
 
-    const services = snapshot.docs.map((serviceDoc: FirebaseFirestore.QueryDocumentSnapshot) => {
-      const data = serviceDoc.data();
+    // Check if Firebase is initialized
+    if (!firestoreDb) {
+      console.error('❌ Firestore not initialized');
+      return NextResponse.json(
+        { error: 'Database not available' },
+        { status: 500 }
+      );
+    }
 
-      return {
-        ...data,
-        id: data.id || serviceDoc.id,
-      };
-    });
+    // Fetch all services (both active and inactive)
+    const servicesCollection = collection(firestoreDb, 'services');
+    const servicesSnapshot = await getDocs(servicesCollection);
+
+    const services = servicesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // Count active vs inactive
+    const activeCount = services.filter(service => service.isActive !== false).length;
+    const inactiveCount = services.filter(service => service.isActive === false).length;
+    console.log(`✅ Found ${services.length} total services (Active: ${activeCount}, Inactive: ${inactiveCount})`);
 
     return NextResponse.json({
       success: true,
-      data: { services },
+      data: {
+        services: services,
+        total: services.length
+      }
     });
-  } catch (error) {
-    console.error("Service fetch failed:", error);
 
+  } catch (error) {
+    console.error('💥 Error fetching services:', error);
+    console.error('💥 Error details:', {
+      message: (error as Error).message,
+      stack: (error as Error).stack,
+      name: (error as Error).name
+    });
+    
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to fetch services",
-      },
+      { error: 'Failed to fetch services: ' + (error as Error).message },
       { status: 500 }
     );
   }

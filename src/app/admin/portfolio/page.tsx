@@ -195,7 +195,7 @@ const PortfolioPage = () => {
           className="rounded-xl bg-orange-500 px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-orange-600"
         >
           <i className="fas fa-plus mr-2"></i>
-          Add Portfolio Item
+          Add New
         </button>
       </div>
 
@@ -205,13 +205,13 @@ const PortfolioPage = () => {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {portfolio.map((item) => (
           <div
             key={item.id}
             className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 hover:shadow-lg"
           >
-            <div className="relative h-64 bg-gradient-to-br from-slate-100 to-slate-200">
+            <div className="relative h-48 sm:h-64 bg-gradient-to-br from-slate-100 to-slate-200">
               <img
                 src={item.imageUrl}
                 alt={item.title}
@@ -220,9 +220,9 @@ const PortfolioPage = () => {
                   event.currentTarget.src = `https://picsum.photos/seed/${item.id}/400/300.jpg`;
                 }}
               />
-              <div className="absolute right-4 top-4">
+              <div className="absolute right-2 sm:right-4 top-2 sm:top-4">
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  className={`rounded-full px-2 sm:px-3 py-1 text-xs font-medium ${
                     item.isActive ? 'bg-orange-500 text-white' : 'bg-slate-900 text-white'
                   }`}
                 >
@@ -231,36 +231,46 @@ const PortfolioPage = () => {
               </div>
             </div>
 
-            <div className="p-6">
-              <h3 className="mb-3 text-lg font-semibold text-slate-900">{item.title}</h3>
-              <p className="mb-4 line-clamp-3 text-sm text-slate-600">{item.metaText}</p>
+            <div className="p-4 sm:p-6">
+              <h3 className="mb-2 sm:mb-3 text-base sm:text-lg font-semibold text-slate-900 line-clamp-1">{item.title}</h3>
+              <p className="mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-3 text-xs sm:text-sm text-slate-600">{item.metaText}</p>
 
               <div className="flex space-x-2">
                 <button
                   type="button"
                   onClick={() => handleToggleStatus(item.id, !item.isActive)}
                   disabled={statusUpdatingId === item.id}
-                  className={`flex-1 rounded-xl px-4 py-2 font-medium text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
+                  className={`flex-1 rounded-xl px-2 sm:px-4 py-2 font-medium text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 text-xs sm:text-sm ${
                     item.isActive
                       ? 'bg-emerald-500 hover:bg-emerald-600'
                       : 'bg-amber-500 hover:bg-amber-600'
                   }`}
                 >
-                  <i className={`fas ${item.isActive ? 'fa-toggle-on' : 'fa-toggle-off'} mr-2`}></i>
-                  {statusUpdatingId === item.id
-                    ? 'Updating...'
-                    : item.isActive
-                      ? 'Turn Off'
-                      : 'Turn On'}
+                  <i className={`fas ${item.isActive ? 'fa-toggle-on' : 'fa-toggle-off'} mr-1 sm:mr-2`}></i>
+                  <span className="hidden sm:inline">
+                    {statusUpdatingId === item.id
+                      ? 'Updating...'
+                      : item.isActive
+                        ? 'Turn Off'
+                        : 'Turn On'}
+                  </span>
+                  <span className="sm:hidden">
+                    {statusUpdatingId === item.id
+                      ? '...'
+                      : item.isActive
+                        ? 'Off'
+                        : 'On'}
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeleteTarget(item)}
                   disabled={deleteLoading && deleteTarget?.id === item.id}
-                  className="flex-1 rounded-xl bg-slate-200 px-4 py-2 font-medium text-slate-700 transition-all duration-200 hover:bg-slate-300"
+                  className="flex-1 rounded-xl bg-slate-200 px-2 sm:px-4 py-2 font-medium text-slate-700 transition-all duration-200 hover:bg-slate-300 text-xs sm:text-sm"
                 >
-                  <i className="fas fa-trash mr-2"></i>
-                  Delete
+                  <i className="fas fa-trash mr-1 sm:mr-2"></i>
+                  <span className="hidden sm:inline">Delete</span>
+                  <span className="sm:hidden">Del</span>
                 </button>
               </div>
             </div>
@@ -272,12 +282,12 @@ const PortfolioPage = () => {
           onClick={() => router.push('/admin/portfolio/new')}
           className="cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-white text-left shadow-sm transition-colors duration-200 hover:border-orange-400"
         >
-          <div className="flex h-64 items-center justify-center">
+          <div className="flex h-48 sm:h-64 items-center justify-center">
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100">
-                <i className="fas fa-plus text-2xl text-orange-500"></i>
+              <div className="mx-auto mb-3 sm:mb-4 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-orange-100">
+                <i className="fas fa-plus text-xl sm:text-2xl text-orange-500"></i>
               </div>
-              <p className="font-medium text-slate-600">Add Portfolio Item</p>
+              <p className="font-medium text-slate-600 text-sm sm:text-base px-4">Add Portfolio Item</p>
             </div>
           </div>
         </button>

@@ -24,6 +24,7 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [initialRedirectDone, setInitialRedirectDone] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -47,6 +48,12 @@ export default function AdminLayout({
         if (isMounted) {
           setUser(authenticatedUser);
           setLoading(false);
+        }
+
+        // Only redirect to dashboard on initial load, not on tab switches
+        if (pathname === '/admin' && !initialRedirectDone) {
+          setInitialRedirectDone(true);
+          router.replace('/admin/dashboard');
         }
       } catch (error) {
         console.error('Admin session check failed:', error);
