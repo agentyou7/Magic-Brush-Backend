@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { firestoreDb } from "../../../lib/firebase";
+import { NextRequest, NextResponse } from 'next/server';
+import { firestoreDb } from '@/lib/firebase';
+import * as admin from 'firebase-admin';
 
 type IncomingFeature = {
   iconName?: string;
@@ -18,6 +19,11 @@ type IncomingService = {
   features?: IncomingFeature[];
   isActive?: boolean;
 };
+
+interface ServiceItem {
+  id: string;
+  [key: string]: any;
+}
 
 function normalizeText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -127,7 +133,7 @@ export async function GET(request: NextRequest) {
     const servicesCollection = firestoreDb.collection('services');
     const servicesSnapshot = await servicesCollection.get();
 
-    const services = servicesSnapshot.docs.map(doc => ({
+    const services = servicesSnapshot.docs.map((doc: admin.firestore.QueryDocumentSnapshot) => ({
       id: doc.id,
       ...doc.data()
     }));

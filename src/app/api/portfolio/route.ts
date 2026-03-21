@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { firestoreDb } from '@/lib/firebase';
 import * as admin from 'firebase-admin';
 
+interface PortfolioItem {
+  id: string;
+  [key: string]: any;
+}
+
 export async function GET(request: NextRequest) {
   try {
     console.log('📁 Fetching portfolio items from Firebase...');
@@ -27,7 +32,7 @@ export async function GET(request: NextRequest) {
         const portfolioSnapshot = await portfolioCollection.get();
         
         if (!portfolioSnapshot.empty) {
-          portfolioItems = portfolioSnapshot.docs.map(doc => ({
+          portfolioItems = portfolioSnapshot.docs.map((doc: admin.firestore.QueryDocumentSnapshot) => ({
             id: doc.id,
             ...doc.data()
           }));
