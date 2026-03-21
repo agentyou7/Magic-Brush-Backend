@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { firestoreDb } from '@/lib/firebase';
+import { firestoreDb } from '../../../lib/firebase';
 import * as admin from 'firebase-admin';
 
 interface PortfolioItem {
