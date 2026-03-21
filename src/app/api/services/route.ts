@@ -133,8 +133,8 @@ export async function GET(request: NextRequest) {
     }));
 
     // Count active vs inactive
-    const activeCount = services.filter(service => service.isActive !== false).length;
-    const inactiveCount = services.filter(service => service.isActive === false).length;
+    const activeCount = services.filter((service: any) => service.isActive !== false).length;
+    const inactiveCount = services.filter((service: any) => service.isActive === false).length;
     console.log(`✅ Found ${services.length} total services (Active: ${activeCount}, Inactive: ${inactiveCount})`);
 
     return NextResponse.json({

@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
           console.log(`✅ Found ${portfolioItems.length} total items in '${collectionName}' collection`);
           
           // Count active vs inactive
-          const activeCount = portfolioItems.filter(item => item.isActive !== false).length;
-          const inactiveCount = portfolioItems.filter(item => item.isActive === false).length;
+          const activeCount = portfolioItems.filter((item: any) => item.isActive !== false).length;
+          const inactiveCount = portfolioItems.filter((item: any) => item.isActive === false).length;
           console.log(`📊 Active: ${activeCount}, Inactive: ${inactiveCount}`);
           break;
         } else {
