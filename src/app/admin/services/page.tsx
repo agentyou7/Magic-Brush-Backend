@@ -48,7 +48,7 @@ const ServicesPage = () => {
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
