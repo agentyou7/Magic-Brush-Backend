@@ -90,7 +90,7 @@ const PortfolioPage = () => {
   }, [router]);
 
   const handleDeletePortfolioItem = async () => {
-    if (!deleteTarget) {
+    if (!deleteTarget || deleteLoading) {
       return;
     }
 
@@ -98,7 +98,7 @@ const PortfolioPage = () => {
     setErrorMessage('');
 
     try {
-      const response = await fetch(`/api/admin/portfolio/${deleteTarget.id}`, {
+      const response = await fetch(`/api/portfolio/${deleteTarget.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -111,13 +111,18 @@ const PortfolioPage = () => {
       }
 
       if (deleteTarget.imagePublicId) {
-        await fetch('/api/upload', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ publicId: deleteTarget.imagePublicId }),
-        });
+        try {
+          await fetch('/api/upload', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ publicId: deleteTarget.imagePublicId }),
+          });
+        } catch (imageError) {
+          console.warn('Failed to delete image:', imageError);
+          // Continue even if image deletion fails
+        }
       }
 
       setPortfolio((currentItems) =>
@@ -125,9 +130,18 @@ const PortfolioPage = () => {
       );
       setDeleteTarget(null);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : 'Unable to delete this portfolio item right now.'
-      );
+      // Don't show error for 404 (item already deleted)
+      if (error instanceof Error && !error.message.includes('not found')) {
+        setErrorMessage(
+          error instanceof Error ? error.message : 'Unable to delete this portfolio item right now.'
+        );
+      } else {
+        // If item not found, just close modal and refresh UI
+        setPortfolio((currentItems) =>
+          currentItems.filter((item) => item.id !== deleteTarget.id)
+        );
+        setDeleteTarget(null);
+      }
     } finally {
       setDeleteLoading(false);
     }

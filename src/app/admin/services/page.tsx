@@ -118,6 +118,64 @@ const ServicesPage = () => {
     setSearchQuery('');
   };
 
+  const handleDeleteService = async () => {
+    if (!deleteTarget || deleteLoading) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    setErrorMessage('');
+
+    try {
+      const response = await fetch(`/api/services/${deleteTarget.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      await handleUnauthorizedResponse(response, router);
+      const data = await readJsonSafely(response);
+
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || 'Failed to delete service');
+      }
+
+      if (deleteTarget.imagePublicId) {
+        try {
+          await fetch('/api/upload', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ publicId: deleteTarget.imagePublicId }),
+          });
+        } catch (imageError) {
+          console.warn('Failed to delete image:', imageError);
+          // Continue even if image deletion fails
+        }
+      }
+
+      setServices((currentServices) =>
+        currentServices.filter((service) => service.id !== deleteTarget.id)
+      );
+      setDeleteTarget(null);
+    } catch (error) {
+      // Don't show error for 404 (item already deleted)
+      if (error instanceof Error && !error.message.includes('not found')) {
+        setErrorMessage(
+          error instanceof Error ? error.message : 'Unable to delete this service right now.'
+        );
+      } else {
+        // If item not found, just close modal and refresh UI
+        setServices((currentServices) =>
+          currentServices.filter((service) => service.id !== deleteTarget.id)
+        );
+        setDeleteTarget(null);
+      }
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const handleToggleStatus = async (serviceId: string, nextStatus: boolean) => {
     const previousServices = services;
 
@@ -152,40 +210,6 @@ const ServicesPage = () => {
       );
     } finally {
       setStatusUpdatingId(null);
-    }
-  };
-
-  const handleDeleteService = async () => {
-    if (!deleteTarget) {
-      return;
-    }
-
-    setDeleteLoading(true);
-    setErrorMessage('');
-
-    try {
-      const response = await fetch(`/api/admin/services/${deleteTarget.id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      await handleUnauthorizedResponse(response, router);
-
-      const data = await readJsonSafely(response);
-
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.message || 'Failed to delete service');
-      }
-
-      setServices((currentServices) =>
-        currentServices.filter((service) => service.id !== deleteTarget.id)
-      );
-      setDeleteTarget(null);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : 'Unable to delete this service right now.'
-      );
-    } finally {
-      setDeleteLoading(false);
     }
   };
 
@@ -328,7 +352,12 @@ const ServicesPage = () => {
                   <i className="fas fa-edit mr-1"></i>
                   <span className="hidden sm:inline">Edit</span>
                 </button>
-                <button className="flex-1 px-3 sm:px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium transition-all duration-200 text-xs sm:text-sm">
+                <button 
+                  type="button"
+                  onClick={() => setDeleteTarget(service)}
+                  disabled={deleteLoading && deleteTarget?.id === service.id}
+                  className="flex-1 px-3 sm:px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium transition-all duration-200 text-xs sm:text-sm"
+                >
                   <i className="fas fa-trash mr-1"></i>
                   <span className="hidden sm:inline">Delete</span>
                 </button>
