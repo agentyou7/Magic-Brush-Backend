@@ -348,9 +348,20 @@ const ServicesPage = () => {
               </div>
 
               <div className="flex space-x-2">
-                <button className="flex-1 px-3 sm:px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-all duration-200 text-xs sm:text-sm">
-                  <i className="fas fa-edit mr-1"></i>
-                  <span className="hidden sm:inline">Edit</span>
+                <button 
+                  type="button"
+                  onClick={() => handleToggleStatus(service.id, !service.isActive)}
+                  disabled={statusUpdatingId === service.id}
+                  className={`flex-1 px-3 sm:px-4 py-2 rounded-xl font-medium transition-all duration-200 text-xs sm:text-sm ${
+                    service.isActive 
+                      ? 'bg-green-500 hover:bg-green-600 text-white' 
+                      : 'bg-slate-500 hover:bg-slate-600 text-white'
+                  }`}
+                >
+                  <i className={`fas ${service.isActive ? 'fa-toggle-on' : 'fa-toggle-off'} mr-1`}></i>
+                  <span className="hidden sm:inline">
+                    {statusUpdatingId === service.id ? 'Updating...' : (service.isActive ? 'Active' : 'Inactive')}
+                  </span>
                 </button>
                 <button 
                   type="button"
