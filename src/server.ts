@@ -17,9 +17,10 @@ import { servicesRouter } from "./routes/services";
 const dev = process.env.NODE_ENV !== "production";
 const hostname = dev ? "localhost" : "0.0.0.0";
 const port = env.PORT;
+const appDir = path.resolve(__dirname, "..");
 
 // Initialize Next.js app
-const app = next({ dev, hostname, port });
+const app = next({ dev, dir: appDir, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {

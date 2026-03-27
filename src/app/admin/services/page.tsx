@@ -43,6 +43,7 @@ const ServicesPage = () => {
   const router = useRouter();
   const [services, setServices] = useState<Service[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
@@ -123,11 +124,19 @@ const ServicesPage = () => {
       return;
     }
 
+    const target = deleteTarget;
+    const previousServices = services;
+
     setDeleteLoading(true);
     setErrorMessage('');
+    setSuccessMessage('');
+    setServices((currentServices) =>
+      currentServices.filter((service) => service.id !== target.id)
+    );
+    setDeleteTarget(null);
 
     try {
-      const response = await fetch(`/api/services/${deleteTarget.id}`, {
+      const response = await fetch(`/api/services/${target.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -139,37 +148,29 @@ const ServicesPage = () => {
         throw new Error(data?.message || 'Failed to delete service');
       }
 
-      if (deleteTarget.imagePublicId) {
+      if (target.imagePublicId) {
         try {
           await fetch('/api/upload', {
             method: 'DELETE',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ publicId: deleteTarget.imagePublicId }),
+            body: JSON.stringify({ publicId: target.imagePublicId }),
           });
         } catch (imageError) {
           console.warn('Failed to delete image:', imageError);
-          // Continue even if image deletion fails
         }
       }
 
-      setServices((currentServices) =>
-        currentServices.filter((service) => service.id !== deleteTarget.id)
-      );
-      setDeleteTarget(null);
+      setSuccessMessage(`"${target.title}" was deleted successfully.`);
     } catch (error) {
-      // Don't show error for 404 (item already deleted)
       if (error instanceof Error && !error.message.includes('not found')) {
+        setServices(previousServices);
         setErrorMessage(
           error instanceof Error ? error.message : 'Unable to delete this service right now.'
         );
       } else {
-        // If item not found, just close modal and refresh UI
-        setServices((currentServices) =>
-          currentServices.filter((service) => service.id !== deleteTarget.id)
-        );
-        setDeleteTarget(null);
+        setSuccessMessage(`"${target.title}" was deleted successfully.`);
       }
     } finally {
       setDeleteLoading(false);
@@ -294,6 +295,12 @@ const ServicesPage = () => {
       {errorMessage ? (
         <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {errorMessage}
+        </div>
+      ) : null}
+
+      {successMessage ? (
+        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {successMessage}
         </div>
       ) : null}
 
@@ -499,6 +506,33 @@ const ServicesPage = () => {
                 className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-all duration-200 disabled:opacity-50"
               >
                 {deleteLoading ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {successMessage ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+            <div className="border-b border-slate-200 p-6">
+              <h2 className="text-xl font-semibold text-slate-900">Delete Successful</h2>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <i className="fas fa-check text-xl"></i>
+              </div>
+              <p className="text-sm text-slate-600">{successMessage}</p>
+            </div>
+
+            <div className="border-t border-slate-200 p-6">
+              <button
+                type="button"
+                onClick={() => setSuccessMessage('')}
+                className="w-full rounded-xl bg-emerald-500 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-emerald-600"
+              >
+                OK
               </button>
             </div>
           </div>

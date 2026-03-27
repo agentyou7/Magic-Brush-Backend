@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "next dev --webpack",
+    "dev:server": "tsx watch src/server.ts",
     "build": "next build && tsc -p tsconfig.server.json",
     "build:server": "tsc -p tsconfig.server.json",
     "build:next": "next build",
