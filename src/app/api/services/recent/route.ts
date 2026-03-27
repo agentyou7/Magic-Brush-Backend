@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { firestoreDb } from '../../../../lib/firebase';
+import { buildOptionsResponse, withCors } from '../../../../lib/cors';
 import * as admin from 'firebase-admin';
+
+export async function OPTIONS(request: NextRequest) {
+  return buildOptionsResponse(request.headers.get("origin"));
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,9 +14,12 @@ export async function GET(request: NextRequest) {
     // Check if Firebase is initialized
     if (!firestoreDb) {
       console.error('❌ Firestore not initialized');
-      return NextResponse.json(
+      return withCors(
+        NextResponse.json(
         { error: 'Database not available' },
         { status: 500 }
+        ),
+        request.headers.get("origin")
       );
     }
 
@@ -32,13 +40,16 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Found ${services.length} recent active services`);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        services: services,
-        total: services.length
-      }
-    });
+    return withCors(
+      NextResponse.json({
+        success: true,
+        data: {
+          services: services,
+          total: services.length
+        }
+      }),
+      request.headers.get("origin")
+    );
 
   } catch (error) {
     console.error('💥 Error fetching recent services:', error);
@@ -48,9 +59,12 @@ export async function GET(request: NextRequest) {
       name: (error as Error).name
     });
     
-    return NextResponse.json(
-      { error: 'Failed to fetch recent services: ' + (error as Error).message },
-      { status: 500 }
+    return withCors(
+      NextResponse.json(
+        { error: 'Failed to fetch recent services: ' + (error as Error).message },
+        { status: 500 }
+      ),
+      request.headers.get("origin")
     );
   }
 }

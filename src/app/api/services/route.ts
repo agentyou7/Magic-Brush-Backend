@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { firestoreDb } from '../../../lib/firebase';
+import { buildOptionsResponse, withCors } from '../../../lib/cors';
 import * as admin from 'firebase-admin';
 
 type IncomingFeature = {
@@ -23,6 +24,10 @@ type IncomingService = {
 interface ServiceItem {
   id: string;
   [key: string]: any;
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return buildOptionsResponse(request.headers.get("origin"));
 }
 
 function normalizeText(value: unknown) {
@@ -83,7 +88,10 @@ export async function POST(request: NextRequest) {
     const validation = validateServicePayload(serviceData);
 
     if ("error" in validation) {
-      return NextResponse.json({ success: false, error: validation.error }, { status: 400 });
+      return withCors(
+        NextResponse.json({ success: false, error: validation.error }, { status: 400 }),
+        request.headers.get("origin")
+      );
     }
 
     const serviceRef = firestoreDb.collection("services").doc();
@@ -96,22 +104,28 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        id: serviceRef.id,
-        message: "Service created successfully",
-      },
-    });
+    return withCors(
+      NextResponse.json({
+        success: true,
+        data: {
+          id: serviceRef.id,
+          message: "Service created successfully",
+        },
+      }),
+      request.headers.get("origin")
+    );
   } catch (error) {
     console.error("Service creation failed:", error);
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to create service",
-      },
-      { status: 500 }
+    return withCors(
+      NextResponse.json(
+        {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to create service",
+        },
+        { status: 500 }
+      ),
+      request.headers.get("origin")
     );
   }
 }
@@ -123,9 +137,12 @@ export async function GET(request: NextRequest) {
     // Check if Firebase is initialized
     if (!firestoreDb) {
       console.error('❌ Firestore not initialized');
-      return NextResponse.json(
+      return withCors(
+        NextResponse.json(
         { error: 'Database not available' },
         { status: 500 }
+        ),
+        request.headers.get("origin")
       );
     }
 
@@ -143,13 +160,16 @@ export async function GET(request: NextRequest) {
     const inactiveCount = services.filter((service: any) => service.isActive === false).length;
     console.log(`✅ Found ${services.length} total services (Active: ${activeCount}, Inactive: ${inactiveCount})`);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        services: services,
-        total: services.length
-      }
-    });
+    return withCors(
+      NextResponse.json({
+        success: true,
+        data: {
+          services: services,
+          total: services.length
+        }
+      }),
+      request.headers.get("origin")
+    );
 
   } catch (error) {
     console.error('💥 Error fetching services:', error);
@@ -159,9 +179,12 @@ export async function GET(request: NextRequest) {
       name: (error as Error).name
     });
     
-    return NextResponse.json(
-      { error: 'Failed to fetch services: ' + (error as Error).message },
-      { status: 500 }
+    return withCors(
+      NextResponse.json(
+        { error: 'Failed to fetch services: ' + (error as Error).message },
+        { status: 500 }
+      ),
+      request.headers.get("origin")
     );
   }
 }
