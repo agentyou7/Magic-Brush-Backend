@@ -3,7 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { handleUnauthorizedResponse, redirectToLogin } from '@/lib/client-auth';
+import {
+  ADMIN_SESSION_EXPIRED_EVENT,
+  handleUnauthorizedResponse,
+  redirectToLogin
+} from '@/lib/client-auth';
 
 interface User {
   id: string;
@@ -23,6 +27,7 @@ export default function AdminLayout({
   const [user, setUser] = useState<User | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [initialRedirectDone, setInitialRedirectDone] = useState(false);
 
@@ -60,8 +65,13 @@ export default function AdminLayout({
         localStorage.removeItem('user');
 
         if (isMounted) {
-          setUser(null);
           setLoading(false);
+          if (error instanceof Error && error.message === 'SESSION_EXPIRED') {
+            setShowSessionExpiredModal(true);
+            return;
+          }
+
+          setUser(null);
           redirectToLogin(router);
         }
       }
@@ -91,6 +101,15 @@ export default function AdminLayout({
 
     window.addEventListener('focus', handleFocus);
 
+    const handleSessionExpired = () => {
+      if (!isMounted) return;
+      setShowSessionExpiredModal(true);
+      setSidebarOpen(false);
+      setShowLogoutModal(false);
+    };
+
+    window.addEventListener(ADMIN_SESSION_EXPIRED_EVENT, handleSessionExpired);
+
     return () => {
       isMounted = false;
       if (sessionCheckInterval) {
@@ -98,6 +117,7 @@ export default function AdminLayout({
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener(ADMIN_SESSION_EXPIRED_EVENT, handleSessionExpired);
     };
   }, [router, loading]);
 
@@ -122,6 +142,13 @@ export default function AdminLayout({
 
   const closeLogoutModal = () => {
     setShowLogoutModal(false);
+  };
+
+  const handleSessionExpiredLogin = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    setShowSessionExpiredModal(false);
+    redirectToLogin(router);
   };
 
   const isActiveRoute = (href: string) =>
@@ -254,6 +281,7 @@ export default function AdminLayout({
             </div>
             <button
               onClick={openLogoutModal}
+              disabled={showSessionExpiredModal}
               className="w-full cursor-pointer flex items-center justify-center space-x-2 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all duration-200 font-medium"
             >
               <i className="fas fa-sign-out-alt"></i>
@@ -341,6 +369,29 @@ export default function AdminLayout({
                 Yes
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showSessionExpiredModal && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm px-4">
+          <div className="w-full max-w-sm rounded-[1.75rem] bg-white shadow-2xl border border-slate-200 p-7 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto mb-5">
+              <i className="fas fa-clock text-xl"></i>
+            </div>
+
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Session expired</h2>
+            <p className="mt-3 text-slate-600">
+              Your session has expired. Please log in again to continue.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleSessionExpiredLogin}
+              className="mt-6 w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-3.5 rounded-2xl transition-all shadow-lg shadow-orange-500/20"
+            >
+              Login Again
+            </button>
           </div>
         </div>
       )}

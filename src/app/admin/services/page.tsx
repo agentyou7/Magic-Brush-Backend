@@ -21,8 +21,8 @@ interface Service {
     description: string;
   }>;
   isActive: boolean;
-  createdAt: any;
-  updatedAt: any;
+  createdAt: string;
+  updatedAt: string;
 }
 
 async function readJsonSafely(response: Response) {
@@ -345,7 +345,7 @@ const ServicesPage = () => {
               <div className="mb-3 sm:mb-4">
                 <p className="text-xs text-slate-500 font-medium mb-1">Features:</p>
                 <div className="space-y-1">
-                  {service.features.slice(0, 2).map((feature, index) => (
+                  {service.features.slice(0, 2).map((feature) => (
                     <div key={feature.id} className="flex items-center gap-2 text-xs text-slate-600">
                       <i className={`fas fa-${feature.iconName.toLowerCase()} text-orange-500`}></i>
                       <span className="line-clamp-1">{feature.heading}</span>
@@ -354,30 +354,38 @@ const ServicesPage = () => {
                 </div>
               </div>
 
-              <div className="flex space-x-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => router.push(`/admin/services/${service.id}/edit`)}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-orange-600"
+                >
+                  <i className="fas fa-pen text-xs"></i>
+                  <span>Edit</span>
+                </button>
                 <button 
                   type="button"
                   onClick={() => handleToggleStatus(service.id, !service.isActive)}
                   disabled={statusUpdatingId === service.id}
-                  className={`flex-1 px-3 sm:px-4 py-2 rounded-xl font-medium transition-all duration-200 text-xs sm:text-sm ${
+                  className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold text-white transition-all duration-200 ${
                     service.isActive 
-                      ? 'bg-green-500 hover:bg-green-600 text-white' 
-                      : 'bg-slate-500 hover:bg-slate-600 text-white'
+                      ? 'bg-emerald-500 hover:bg-emerald-600' 
+                      : 'bg-amber-500 hover:bg-amber-600'
                   }`}
                 >
-                  <i className={`fas ${service.isActive ? 'fa-toggle-on' : 'fa-toggle-off'} mr-1`}></i>
-                  <span className="hidden sm:inline">
-                    {statusUpdatingId === service.id ? 'Updating...' : (service.isActive ? 'Active' : 'Inactive')}
+                  <i className={`fas ${service.isActive ? 'fa-eye-slash' : 'fa-eye'} text-xs`}></i>
+                  <span>
+                    {statusUpdatingId === service.id ? 'Saving' : (service.isActive ? 'Hide' : 'Show')}
                   </span>
                 </button>
                 <button 
                   type="button"
                   onClick={() => setDeleteTarget(service)}
                   disabled={deleteLoading && deleteTarget?.id === service.id}
-                  className="flex-1 px-3 sm:px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium transition-all duration-200 text-xs sm:text-sm"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                 >
-                  <i className="fas fa-trash mr-1"></i>
-                  <span className="hidden sm:inline">Delete</span>
+                  <i className="fas fa-trash text-xs"></i>
+                  <span>Delete</span>
                 </button>
               </div>
             </div>
@@ -433,7 +441,9 @@ const ServicesPage = () => {
                         name="status"
                         value={option.value}
                         checked={statusFilter === option.value}
-                        onChange={(e) => setStatusFilter(e.target.value as any)}
+                        onChange={(e) =>
+                          setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')
+                        }
                         className="w-4 h-4 text-orange-500 border-slate-300 focus:ring-orange-500"
                       />
                       <span className="text-sm text-slate-700">{option.label}</span>

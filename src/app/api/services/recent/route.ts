@@ -9,11 +9,11 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔥 Fetching recent services from Firebase...');
+    console.log('ðŸ”¥ Fetching recent services from Firebase...');
 
     // Check if Firebase is initialized
     if (!firestoreDb) {
-      console.error('❌ Firestore not initialized');
+      console.error('âŒ Firestore not initialized');
       return withCors(
         NextResponse.json(
         { error: 'Database not available' },
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const shuffled = allServices.sort(() => 0.5 - Math.random());
     const services = shuffled.slice(0, 5);
 
-    console.log(`✅ Found ${services.length} recent active services`);
+    console.log(`âœ… Found ${services.length} recent active services`);
 
     return withCors(
       NextResponse.json({
@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
     );
 
   } catch (error) {
-    console.error('💥 Error fetching recent services:', error);
-    console.error('💥 Error details:', {
+    console.error('ðŸ’¥ Error fetching recent services:', error);
+    console.error('ðŸ’¥ Error details:', {
       message: (error as Error).message,
       stack: (error as Error).stack,
       name: (error as Error).name

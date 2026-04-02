@@ -37,6 +37,17 @@ const LoginPage = () => {
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showInvalidCredentialsModal, setShowInvalidCredentialsModal] = useState(false);
+
+  const openInvalidCredentialsModal = () => {
+    setShowInvalidCredentialsModal(true);
+    setStatus('idle');
+    setErrorMessage('');
+  };
+
+  const closeInvalidCredentialsModal = () => {
+    setShowInvalidCredentialsModal(false);
+  };
 
   const handleFieldChange = (field: keyof FormDataState, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -97,10 +108,16 @@ const LoginPage = () => {
       const result = await readJsonSafely(response);
 
       if (!response.ok || !result.success) {
-        setStatus('error');
         if (result?.errors) {
+          setStatus('error');
           setFieldErrors(result.errors);
+        } else if (
+          response.status === 401 ||
+          String(result?.message || '').toLowerCase().includes('invalid email or password')
+        ) {
+          openInvalidCredentialsModal();
         } else {
+          setStatus('error');
           setErrorMessage(result?.message || 'Login failed. Please try again.');
         }
         return;
@@ -390,6 +407,29 @@ const LoginPage = () => {
           </div>
         </div>
       </div>
+
+      {showInvalidCredentialsModal ? (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-[1.75rem] bg-white shadow-2xl border border-slate-200 p-7 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto mb-5">
+              <span className="text-2xl font-black">!</span>
+            </div>
+
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Invalid credentials</h2>
+            <p className="mt-3 text-slate-600">
+              Check your email and password and try again.
+            </p>
+
+            <button
+              type="button"
+              onClick={closeInvalidCredentialsModal}
+              className="mt-6 w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-3.5 rounded-2xl transition-all shadow-lg shadow-orange-500/20"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

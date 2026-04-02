@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { handleUnauthorizedResponse } from '@/lib/client-auth';
+import { Filter, Search, X } from 'lucide-react';
 
 interface PortfolioItem {
   id: string;
@@ -37,6 +38,9 @@ const PortfolioPage = () => {
   const [deleteTarget, setDeleteTarget] = useState<PortfolioItem | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
     let isMounted = true;
@@ -185,6 +189,23 @@ const PortfolioPage = () => {
     }
   };
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredPortfolio = portfolio.filter((item) => {
+    const matchesSearch =
+      normalizedSearchQuery === '' ||
+      item.title.toLowerCase().includes(normalizedSearchQuery) ||
+      item.metaText.toLowerCase().includes(normalizedSearchQuery);
+
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && item.isActive) ||
+      (statusFilter === 'inactive' && !item.isActive);
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const hasActiveFilters = statusFilter !== 'all';
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -198,20 +219,56 @@ const PortfolioPage = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="mb-2 text-3xl font-bold text-slate-900">Portfolio Management</h1>
-          <p className="text-slate-600">Showcase your best work and transformations</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Portfolio Management</h1>
+          <p className="text-slate-600 text-sm sm:text-base">Showcase your best work and transformations</p>
         </div>
-        <button
-          type="button"
-          onClick={() => router.push('/admin/portfolio/new')}
-          className="rounded-xl bg-orange-500 px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-orange-600"
-        >
-          <i className="fas fa-plus mr-2"></i>
-          Add New
-        </button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className={`relative rounded-xl ${searchQuery !== '' ? 'border-2 border-orange-500' : ''}`}>
+            <input
+              type="text"
+              placeholder="Search portfolio..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`pl-10 pr-10 py-3 bg-white border rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent w-full sm:w-64 ${
+                searchQuery !== '' ? 'border-orange-500' : 'border-slate-200'
+              }`}
+            />
+            {searchQuery !== '' && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+          </div>
+          <button
+            onClick={() => setShowFilterModal(true)}
+            className={`relative px-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
+              hasActiveFilters
+                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25'
+                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            <span className="hidden sm:inline">Filter</span>
+            {hasActiveFilters && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-600 rounded-full"></span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/admin/portfolio/new')}
+            className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            <i className="fas fa-plus"></i>
+            <span className="hidden sm:inline">New</span>
+          </button>
+        </div>
       </div>
 
       {errorMessage ? (
@@ -227,7 +284,7 @@ const PortfolioPage = () => {
       ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {portfolio.map((item) => (
+        {filteredPortfolio.map((item) => (
           <div
             key={item.id}
             className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 hover:shadow-lg"
@@ -256,42 +313,38 @@ const PortfolioPage = () => {
               <h3 className="mb-2 sm:mb-3 text-base sm:text-lg font-semibold text-slate-900 line-clamp-1">{item.title}</h3>
               <p className="mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-3 text-xs sm:text-sm text-slate-600">{item.metaText}</p>
 
-              <div className="flex space-x-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => router.push(`/admin/portfolio/${item.id}/edit`)}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-orange-600"
+                >
+                  <i className="fas fa-pen text-xs"></i>
+                  <span>Edit</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleToggleStatus(item.id, !item.isActive)}
                   disabled={statusUpdatingId === item.id}
-                  className={`flex-1 rounded-xl px-2 sm:px-4 py-2 font-medium text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 text-xs sm:text-sm ${
+                  className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
                     item.isActive
                       ? 'bg-emerald-500 hover:bg-emerald-600'
                       : 'bg-amber-500 hover:bg-amber-600'
                   }`}
                 >
-                  <i className={`fas ${item.isActive ? 'fa-toggle-on' : 'fa-toggle-off'} mr-1 sm:mr-2`}></i>
-                  <span className="hidden sm:inline">
-                    {statusUpdatingId === item.id
-                      ? 'Updating...'
-                      : item.isActive
-                        ? 'Turn Off'
-                        : 'Turn On'}
-                  </span>
-                  <span className="sm:hidden">
-                    {statusUpdatingId === item.id
-                      ? '...'
-                      : item.isActive
-                        ? 'Off'
-                        : 'On'}
+                  <i className={`fas ${item.isActive ? 'fa-eye-slash' : 'fa-eye'} text-xs`}></i>
+                  <span>
+                    {statusUpdatingId === item.id ? 'Saving' : item.isActive ? 'Hide' : 'Show'}
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeleteTarget(item)}
                   disabled={deleteLoading && deleteTarget?.id === item.id}
-                  className="flex-1 rounded-xl bg-slate-200 px-2 sm:px-4 py-2 font-medium text-slate-700 transition-all duration-200 hover:bg-slate-300 text-xs sm:text-sm"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                 >
-                  <i className="fas fa-trash mr-1 sm:mr-2"></i>
-                  <span className="hidden sm:inline">Delete</span>
-                  <span className="sm:hidden">Del</span>
+                  <i className="fas fa-trash text-xs"></i>
+                  <span>Delete</span>
                 </button>
               </div>
             </div>
@@ -313,6 +366,77 @@ const PortfolioPage = () => {
           </div>
         </button>
       </div>
+
+      {showFilterModal ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/30 backdrop-blur-sm px-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl border border-slate-200">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">Filter Portfolio</h2>
+                <p className="mt-1 text-sm text-slate-600">Narrow down items by status.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFilterModal(false)}
+                className="rounded-xl border border-slate-200 p-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {[
+                { value: 'all', label: 'All Items', helper: 'Show active and hidden portfolio items' },
+                { value: 'active', label: 'Active Only', helper: 'Show only visible portfolio items' },
+                { value: 'inactive', label: 'Hidden Only', helper: 'Show only hidden portfolio items' },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setStatusFilter(option.value as typeof statusFilter)}
+                  className={`w-full rounded-2xl border px-4 py-4 text-left transition-all ${
+                    statusFilter === option.value
+                      ? 'border-orange-500 bg-orange-50 text-orange-600'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">{option.label}</p>
+                      <p className="mt-1 text-sm text-slate-500">{option.helper}</p>
+                    </div>
+                    <div
+                      className={`h-4 w-4 rounded-full border-2 ${
+                        statusFilter === option.value ? 'border-orange-500 bg-orange-500' : 'border-slate-300'
+                      }`}
+                    />
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-8 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('all');
+                  setShowFilterModal(false);
+                }}
+                className="flex-1 rounded-2xl border border-slate-300 px-4 py-3 font-medium text-slate-700 transition-all hover:bg-slate-50"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowFilterModal(false)}
+                className="flex-1 rounded-2xl bg-orange-500 px-4 py-3 font-medium text-white transition-all hover:bg-orange-600"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {deleteTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">

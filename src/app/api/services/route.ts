@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { firestoreDb } from '../../../lib/firebase';
-import { buildOptionsResponse, withCors } from '../../../lib/cors';
 import * as admin from 'firebase-admin';
+import { buildOptionsResponse, withCors } from '../../../lib/cors';
+import { firestoreDb } from '../../../lib/firebase';
 
 type IncomingFeature = {
   iconName?: string;
@@ -21,17 +21,12 @@ type IncomingService = {
   isActive?: boolean;
 };
 
-interface ServiceItem {
-  id: string;
-  [key: string]: any;
-}
-
 export async function OPTIONS(request: NextRequest) {
-  return buildOptionsResponse(request.headers.get("origin"));
+  return buildOptionsResponse(request.headers.get('origin'));
 }
 
 function normalizeText(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 function validateServicePayload(serviceData: IncomingService) {
@@ -43,11 +38,11 @@ function validateServicePayload(serviceData: IncomingService) {
   const imageUrl = normalizeText(serviceData.imageUrl);
 
   if (!title || !shortHeading || !description || !fullDetails || !iconName || !imageUrl) {
-    return { error: "Please fill in all required service fields." };
+    return { error: 'Please fill in all required service fields.' };
   }
 
   if (!Array.isArray(serviceData.features) || serviceData.features.length < 2) {
-    return { error: "At least 2 features are required." };
+    return { error: 'At least 2 features are required.' };
   }
 
   const features = serviceData.features.map((feature, index) => {
@@ -87,14 +82,14 @@ export async function POST(request: NextRequest) {
     const serviceData = (await request.json()) as IncomingService;
     const validation = validateServicePayload(serviceData);
 
-    if ("error" in validation) {
+    if ('error' in validation) {
       return withCors(
         NextResponse.json({ success: false, error: validation.error }, { status: 400 }),
-        request.headers.get("origin")
+        request.headers.get('origin')
       );
     }
 
-    const serviceRef = firestoreDb.collection("services").doc();
+    const serviceRef = firestoreDb.collection('services').doc();
     const now = new Date().toISOString();
 
     await serviceRef.set({
@@ -109,34 +104,34 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           id: serviceRef.id,
-          message: "Service created successfully",
+          message: 'Service created successfully',
         },
       }),
-      request.headers.get("origin")
+      request.headers.get('origin')
     );
   } catch (error) {
-    console.error("Service creation failed:", error);
+    console.error('Service creation failed:', error);
 
     return withCors(
       NextResponse.json(
         {
           success: false,
-          error: error instanceof Error ? error.message : "Failed to create service",
+          error: error instanceof Error ? error.message : 'Failed to create service',
         },
         { status: 500 }
       ),
-      request.headers.get("origin")
+      request.headers.get('origin')
     );
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔥 Fetching all services from Firebase...');
+    console.log('ðŸ”¥ Fetching all services from Firebase...');
 
     // Check if Firebase is initialized
     if (!firestoreDb) {
-      console.error('❌ Firestore not initialized');
+      console.error('âŒ Firestore not initialized');
       return withCors(
         NextResponse.json(
         { error: 'Database not available' },
@@ -158,7 +153,7 @@ export async function GET(request: NextRequest) {
     // Count active vs inactive
     const activeCount = services.filter((service: any) => service.isActive !== false).length;
     const inactiveCount = services.filter((service: any) => service.isActive === false).length;
-    console.log(`✅ Found ${services.length} total services (Active: ${activeCount}, Inactive: ${inactiveCount})`);
+    console.log(`âœ… Found ${services.length} total services (Active: ${activeCount}, Inactive: ${inactiveCount})`);
 
     return withCors(
       NextResponse.json({
@@ -172,8 +167,8 @@ export async function GET(request: NextRequest) {
     );
 
   } catch (error) {
-    console.error('💥 Error fetching services:', error);
-    console.error('💥 Error details:', {
+    console.error('ðŸ’¥ Error fetching services:', error);
+    console.error('ðŸ’¥ Error details:', {
       message: (error as Error).message,
       stack: (error as Error).stack,
       name: (error as Error).name
