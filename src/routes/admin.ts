@@ -194,6 +194,7 @@ adminRouter.get("/inquiries", async (req, res) => {
         id: doc.id,
         name: data.name,
         phone: data.phone,
+        email: data.email,
         service: data.service,
         message: data.message,
         status: data.status,
@@ -306,6 +307,39 @@ adminRouter.patch("/inquiries/:id/status", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to update inquiry status",
+    });
+  }
+});
+
+adminRouter.delete("/inquiries/:id", async (req, res) => {
+  try {
+    const authCheck = await getAdminPayload(req);
+    if (authCheck.error) {
+      return res.status(authCheck.error.status).json(authCheck.error.body);
+    }
+
+    const inquiryId = req.params.id;
+    const inquiryRef = firestoreDb.collection("inquiries").doc(inquiryId);
+    const inquirySnapshot = await inquiryRef.get();
+
+    if (!inquirySnapshot.exists) {
+      return res.status(404).json({
+        success: false,
+        message: "Inquiry not found",
+      });
+    }
+
+    await inquiryRef.delete();
+
+    return res.status(200).json({
+      success: true,
+      message: "Inquiry deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete inquiry error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to delete inquiry",
     });
   }
 });

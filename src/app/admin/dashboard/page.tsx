@@ -73,7 +73,7 @@ const DashboardPage = () => {
         const authResponse = await fetchWithTimeout('/api/auth/me', {
           credentials: 'include',
         });
-        await handleUnauthorizedResponse(authResponse, router);
+        await handleUnauthorizedResponse(authResponse);
 
         const authData = await authResponse.json();
         const authenticatedUser = authData?.data?.user;
@@ -125,11 +125,11 @@ const DashboardPage = () => {
       ]);
 
       if (inquiriesResult.status === 'fulfilled' && inquiriesResult.value.status === 401) {
-        await handleUnauthorizedResponse(inquiriesResult.value, router);
+        await handleUnauthorizedResponse(inquiriesResult.value);
       }
 
       if (usersResult.status === 'fulfilled' && usersResult.value.status === 401) {
-        await handleUnauthorizedResponse(usersResult.value, router);
+        await handleUnauthorizedResponse(usersResult.value);
       }
 
       if (inquiriesResult.status === 'fulfilled' && inquiriesResult.value.ok) {

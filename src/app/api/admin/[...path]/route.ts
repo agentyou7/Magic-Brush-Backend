@@ -166,6 +166,7 @@ async function getInquiries(request: NextRequest) {
       id: doc.id,
       name: data.name,
       phone: data.phone,
+      email: data.email,
       service: data.service,
       message: data.message,
       status: data.status,
@@ -243,6 +244,22 @@ async function patchInquiryStatus(request: NextRequest, id: string, authPayload:
       updatedAt,
       updatedBy,
     },
+  });
+}
+
+async function deleteInquiry(id: string) {
+  const inquiryRef = firestoreDb.collection("inquiries").doc(id);
+  const inquirySnapshot = await inquiryRef.get();
+
+  if (!inquirySnapshot.exists) {
+    return jsonError("Inquiry not found", 404);
+  }
+
+  await inquiryRef.delete();
+
+  return NextResponse.json({
+    success: true,
+    message: "Inquiry deleted successfully",
   });
 }
 
@@ -451,6 +468,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
 
   try {
+    if (path.length === 2 && path[0] === "inquiries") {
+      return await deleteInquiry(path[1]);
+    }
+
     if (path.length === 2 && path[0] === "users") {
       await deleteUser(path[1]);
       return NextResponse.json({

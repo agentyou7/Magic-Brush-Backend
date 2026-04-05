@@ -12,6 +12,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",
@@ -23,13 +24,17 @@
     "firebase-admin": "^13.7.0",
     "framer-motion": "^12.26.2",
     "helmet": "^8.1.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",
     "next": "16.1.6",
+    "nodemailer": "^8.0.4",
     "react": "19.2.3",
     "react-day-picker": "^9.14.0",
     "react-dom": "19.2.3",
     "resend": "^6.9.3",
     "vercel": "^50.37.1",
+    "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {

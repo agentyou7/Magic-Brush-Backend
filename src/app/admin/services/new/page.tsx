@@ -272,7 +272,7 @@ const NewServicePage = () => {
           body: JSON.stringify(serviceData),
           signal: controller.signal,
         });
-        await handleUnauthorizedResponse(response, router);
+        await handleUnauthorizedResponse(response);
 
         clearTimeout(timeoutId);
 

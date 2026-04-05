@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { firestoreDb } from "../../../lib/firebase";
 import { buildOptionsResponse, withCors } from "../../../lib/cors";
-import { contactBodySchema, jsonError, sendContactEmail } from "../../../lib/next-route-helpers";
+import { contactBodySchema, jsonError, sendContactEmails } from "../../../lib/next-route-helpers";
 
 export const runtime = "nodejs";
 
@@ -21,12 +21,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { name, phone, service, message } = parsedBody.data;
+  const { name, phone, email, service, message } = parsedBody.data;
 
   try {
     const inquiryRef = await firestoreDb.collection("inquiries").add({
       name,
       phone,
+      email,
       service,
       message,
       status: "new",
@@ -34,13 +35,18 @@ export async function POST(request: NextRequest) {
       source: "website",
     });
 
-    await sendContactEmail({
-      name,
-      phone,
-      service,
-      message,
-      inquiryId: inquiryRef.id,
-    });
+    try {
+      await sendContactEmails({
+        name,
+        phone,
+        email,
+        service,
+        message,
+        inquiryId: inquiryRef.id,
+      });
+    } catch (emailError) {
+      console.error("Contact email delivery error:", emailError);
+    }
 
     return withCors(
       NextResponse.json(

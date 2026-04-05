@@ -47,13 +47,6 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname === "/login") {
-    if (token) {
-      const dashboardUrl = new URL("/admin/dashboard", request.url);
-      return NextResponse.redirect(dashboardUrl);
-    }
-  }
-
   return NextResponse.next();
 }
 

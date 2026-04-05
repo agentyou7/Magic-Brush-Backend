@@ -63,7 +63,7 @@ const EditPortfolioPage = () => {
         const authResponse = await fetch('/api/auth/me', {
           credentials: 'include',
         });
-        await handleUnauthorizedResponse(authResponse, router);
+        await handleUnauthorizedResponse(authResponse);
 
         const response = await fetch('/api/admin/portfolio/all?includeInactive=true', {
           method: 'GET',
@@ -73,7 +73,7 @@ const EditPortfolioPage = () => {
           },
         });
 
-        await handleUnauthorizedResponse(response, router);
+        await handleUnauthorizedResponse(response);
         const result = await response.json();
 
         if (!response.ok || !result?.success) {
@@ -278,7 +278,7 @@ const EditPortfolioPage = () => {
         }),
       });
 
-      await handleUnauthorizedResponse(response, router);
+      await handleUnauthorizedResponse(response);
       const result = await response.json();
 
       if (!response.ok || !result.success) {

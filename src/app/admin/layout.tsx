@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import {
@@ -27,9 +27,22 @@ export default function AdminLayout({
   const [user, setUser] = useState<User | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [initialRedirectDone, setInitialRedirectDone] = useState(false);
+  const hasRedirectedToLoginRef = useRef(false);
+
+  const sendToLogin = useCallback(() => {
+    if (hasRedirectedToLoginRef.current) {
+      return;
+    }
+
+    hasRedirectedToLoginRef.current = true;
+    localStorage.removeItem('user');
+    setUser(null);
+    setSidebarOpen(false);
+    setShowLogoutModal(false);
+    redirectToLogin();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -39,7 +52,7 @@ export default function AdminLayout({
         const response = await fetch('/api/auth/me', {
           credentials: 'include',
         });
-        await handleUnauthorizedResponse(response, router);
+        await handleUnauthorizedResponse(response);
 
         const result = await response.json();
         const authenticatedUser = result?.data?.user as User | undefined;
@@ -66,13 +79,7 @@ export default function AdminLayout({
 
         if (isMounted) {
           setLoading(false);
-          if (error instanceof Error && error.message === 'SESSION_EXPIRED') {
-            setShowSessionExpiredModal(true);
-            return;
-          }
-
-          setUser(null);
-          redirectToLogin(router);
+          sendToLogin();
         }
       }
     };
@@ -103,9 +110,8 @@ export default function AdminLayout({
 
     const handleSessionExpired = () => {
       if (!isMounted) return;
-      setShowSessionExpiredModal(true);
-      setSidebarOpen(false);
-      setShowLogoutModal(false);
+      setLoading(false);
+      sendToLogin();
     };
 
     window.addEventListener(ADMIN_SESSION_EXPIRED_EVENT, handleSessionExpired);
@@ -119,7 +125,13 @@ export default function AdminLayout({
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener(ADMIN_SESSION_EXPIRED_EVENT, handleSessionExpired);
     };
-  }, [router, loading]);
+  }, [pathname, router, loading, initialRedirectDone, sendToLogin]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      sendToLogin();
+    }
+  }, [loading, user, sendToLogin]);
 
   const handleLogout = async () => {
     try {
@@ -142,13 +154,6 @@ export default function AdminLayout({
 
   const closeLogoutModal = () => {
     setShowLogoutModal(false);
-  };
-
-  const handleSessionExpiredLogin = () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    setShowSessionExpiredModal(false);
-    redirectToLogin(router);
   };
 
   const isActiveRoute = (href: string) =>
@@ -208,14 +213,13 @@ export default function AdminLayout({
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-slate-600 mb-4">Authentication required</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors"
-          >
-            Go to Login
-          </button>
+        <div className="flex flex-col items-center space-y-4 text-center">
+          <img
+            src="/images/logo.png"
+            alt="Magic Brush Ltd"
+            className="h-20 w-auto animate-pulse object-contain"
+          />
+          <p className="text-slate-600">Session expired. Redirecting to login...</p>
         </div>
       </div>
     );
@@ -281,7 +285,6 @@ export default function AdminLayout({
             </div>
             <button
               onClick={openLogoutModal}
-              disabled={showSessionExpiredModal}
               className="w-full cursor-pointer flex items-center justify-center space-x-2 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all duration-200 font-medium"
             >
               <i className="fas fa-sign-out-alt"></i>
@@ -369,29 +372,6 @@ export default function AdminLayout({
                 Yes
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {showSessionExpiredModal && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm px-4">
-          <div className="w-full max-w-sm rounded-[1.75rem] bg-white shadow-2xl border border-slate-200 p-7 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto mb-5">
-              <i className="fas fa-clock text-xl"></i>
-            </div>
-
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Session expired</h2>
-            <p className="mt-3 text-slate-600">
-              Your session has expired. Please log in again to continue.
-            </p>
-
-            <button
-              type="button"
-              onClick={handleSessionExpiredLogin}
-              className="mt-6 w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-3.5 rounded-2xl transition-all shadow-lg shadow-orange-500/20"
-            >
-              Login Again
-            </button>
           </div>
         </div>
       )}

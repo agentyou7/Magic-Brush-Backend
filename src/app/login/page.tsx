@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -38,6 +38,32 @@ const LoginPage = () => {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [showInvalidCredentialsModal, setShowInvalidCredentialsModal] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const verifyExistingSession = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+        });
+
+        if (!isMounted || !response.ok) {
+          return;
+        }
+
+        window.location.replace('/admin/dashboard');
+      } catch {
+        // Stay on login when the existing session is missing or expired.
+      }
+    };
+
+    void verifyExistingSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const openInvalidCredentialsModal = () => {
     setShowInvalidCredentialsModal(true);

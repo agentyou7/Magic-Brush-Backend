@@ -51,7 +51,7 @@ const PortfolioPage = () => {
           credentials: 'include',
         });
 
-        await handleUnauthorizedResponse(authResponse, router);
+        await handleUnauthorizedResponse(authResponse);
 
         const response = await fetch('/api/admin/portfolio/all?includeInactive=true', {
           method: 'GET',
@@ -61,7 +61,7 @@ const PortfolioPage = () => {
           },
         });
 
-        await handleUnauthorizedResponse(response, router);
+        await handleUnauthorizedResponse(response);
         const data = await readJsonSafely(response);
 
         if (!response.ok) {
@@ -116,7 +116,7 @@ const PortfolioPage = () => {
         credentials: 'include',
       });
 
-      await handleUnauthorizedResponse(response, router);
+      await handleUnauthorizedResponse(response);
       const data = await readJsonSafely(response);
 
       if (!response.ok || !data?.success) {
@@ -173,7 +173,7 @@ const PortfolioPage = () => {
         body: JSON.stringify({ isActive: nextStatus }),
       });
 
-      await handleUnauthorizedResponse(response, router);
+      await handleUnauthorizedResponse(response);
       const data = await readJsonSafely(response);
 
       if (!response.ok || !data?.success) {

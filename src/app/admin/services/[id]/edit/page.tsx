@@ -88,13 +88,13 @@ const EditServicePage = () => {
         const authResponse = await fetch('/api/auth/me', {
           credentials: 'include',
         });
-        await handleUnauthorizedResponse(authResponse, router);
+        await handleUnauthorizedResponse(authResponse);
 
         const response = await fetch('/api/admin/services/all?includeInactive=true', {
           method: 'GET',
           credentials: 'include',
         });
-        await handleUnauthorizedResponse(response, router);
+        await handleUnauthorizedResponse(response);
 
         const result = await response.json();
 
@@ -356,7 +356,7 @@ const EditServicePage = () => {
           body: JSON.stringify(serviceData),
           signal: controller.signal,
         });
-        await handleUnauthorizedResponse(response, router);
+        await handleUnauthorizedResponse(response);
 
         clearTimeout(timeoutId);
 

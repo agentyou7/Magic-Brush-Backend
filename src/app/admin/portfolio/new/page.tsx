@@ -196,7 +196,7 @@ const NewPortfolioPage = () => {
         }),
       });
 
-      await handleUnauthorizedResponse(response, router);
+      await handleUnauthorizedResponse(response);
       const result = await response.json();
 
       if (!response.ok || !result.success) {

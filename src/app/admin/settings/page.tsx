@@ -63,7 +63,7 @@ const SettingsPage = () => {
         const response = await fetch('/api/auth/me', {
           credentials: 'include',
         });
-        await handleUnauthorizedResponse(response, router);
+        await handleUnauthorizedResponse(response);
 
         const result = await response.json();
         const authenticatedUser = result?.data?.user as User | undefined;
@@ -82,7 +82,7 @@ const SettingsPage = () => {
         const twoFactorResponse = await fetch('/api/auth/2fa/status', {
           credentials: 'include',
         });
-        await handleUnauthorizedResponse(twoFactorResponse, router);
+        await handleUnauthorizedResponse(twoFactorResponse);
 
         if (twoFactorResponse.ok) {
           const twoFactorResult = await twoFactorResponse.json();
@@ -141,7 +141,7 @@ const SettingsPage = () => {
         method: 'POST',
         credentials: 'include',
       });
-      await handleUnauthorizedResponse(response, router);
+      await handleUnauthorizedResponse(response);
       const result = await readJsonSafely(response);
 
       if (!response.ok) {
@@ -183,7 +183,7 @@ const SettingsPage = () => {
         },
         body: JSON.stringify({ code: twoFactorCode }),
       });
-      await handleUnauthorizedResponse(response, router);
+      await handleUnauthorizedResponse(response);
       const result = await readJsonSafely(response);
 
       if (!response.ok) {
@@ -229,7 +229,7 @@ const SettingsPage = () => {
         },
         body: JSON.stringify({ enabled }),
       });
-      await handleUnauthorizedResponse(response, router);
+      await handleUnauthorizedResponse(response);
       const result = await readJsonSafely(response);
 
       if (!response.ok) {

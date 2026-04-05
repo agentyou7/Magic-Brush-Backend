@@ -1,12 +1,13 @@
 'use client';
 
-import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
-
 export const ADMIN_SESSION_EXPIRED_EVENT = 'admin-session-expired';
 
-export function redirectToLogin(router: AppRouterInstance) {
+export function redirectToLogin() {
   localStorage.removeItem('user');
-  router.replace('/login');
+
+  if (typeof window !== 'undefined') {
+    window.location.replace('/login');
+  }
 }
 
 export function notifySessionExpired() {
@@ -15,10 +16,7 @@ export function notifySessionExpired() {
   }
 }
 
-export async function handleUnauthorizedResponse(
-  response: Response,
-  router: AppRouterInstance
-) {
+export async function handleUnauthorizedResponse(response: Response) {
   if (response.status === 401) {
     notifySessionExpired();
     throw new Error('SESSION_EXPIRED');

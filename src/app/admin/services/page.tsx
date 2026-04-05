@@ -61,7 +61,7 @@ const ServicesPage = () => {
           credentials: 'include',
         });
 
-        await handleUnauthorizedResponse(authResponse, router);
+        await handleUnauthorizedResponse(authResponse);
 
         const response = await fetch('/api/admin/services/all?includeInactive=true', {
           method: 'GET',
@@ -70,7 +70,7 @@ const ServicesPage = () => {
             'Content-Type': 'application/json',
           },
         });
-        await handleUnauthorizedResponse(response, router);
+        await handleUnauthorizedResponse(response);
 
         const data = await readJsonSafely(response);
 
@@ -141,7 +141,7 @@ const ServicesPage = () => {
         credentials: 'include',
       });
 
-      await handleUnauthorizedResponse(response, router);
+      await handleUnauthorizedResponse(response);
       const data = await readJsonSafely(response);
 
       if (!response.ok || !data?.success) {
@@ -197,7 +197,7 @@ const ServicesPage = () => {
         },
         body: JSON.stringify({ isActive: nextStatus }),
       });
-      await handleUnauthorizedResponse(response, router);
+      await handleUnauthorizedResponse(response);
 
       const data = await readJsonSafely(response);
 
